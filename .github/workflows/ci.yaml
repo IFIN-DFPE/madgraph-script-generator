@@ -19,7 +19,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@v6
 
-      - name: Set up Python 3.9
+      - name: Set up Python
         # Use the official Python setup action, which will be faster,
         # since it uses the runner's package cache.
         uses: actions/setup-python@v6
