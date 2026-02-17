@@ -250,7 +250,9 @@ def main(
         print(convert_commands_to_str(wb_wb_signal_commands))
         print()
 
-    signal_script_path = scripts_output_directory / "signal" / f"{signal_name}.txt"
+    signal_script_path = (
+        scripts_output_directory / "signal" / f"{signal_name}.madgraph.txt"
+    )
     signal_script_path.parent.mkdir(parents=True, exist_ok=True)
 
     write_commands_to_file(
@@ -285,7 +287,7 @@ def main(
             print()
 
         write_commands_to_file(
-            bkg_qcd_scripts_output_path / f"{background_name}.txt",
+            bkg_qcd_scripts_output_path / f"{background_name}.madgraph.txt",
             qcd_multijet_commands,
         )
 
@@ -309,7 +311,7 @@ def main(
             print()
 
         write_commands_to_file(
-            bkg_ttbar_scripts_output_path / f"{background_name}.txt",
+            bkg_ttbar_scripts_output_path / f"{background_name}.madgraph.txt",
             ttbar_plus_jets_commands,
         )
 

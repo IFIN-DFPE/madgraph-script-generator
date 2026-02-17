@@ -8,7 +8,11 @@ version = "0.1.0"
 description = "Tool to generate and manage MadGraph5 script files"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["typer>=0.23.2", "typing-extensions>=4.15.0"]
+dependencies = [
+    "tqdm>=4.67.3",
+    "typer>=0.23.2",
+    "typing-extensions>=4.15.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/madgraph_script_generator"]

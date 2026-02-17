@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Default name for nohup output file
+nohup.out
+
+# MadGraph files, generated in the current directory when invoked
+/py.py

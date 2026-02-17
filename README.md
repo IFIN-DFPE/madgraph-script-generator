@@ -7,3 +7,13 @@
 Besides the interactive user interface, MadGraph also supports reading and executing commands from an input file. Unfortunately, the declarative syntax of this file format is very limited, making it hard to automate or streamline certain generation workflows.
 
 The **MadGraph script generator** (this project) introduces a [Python](https://www.python.org/) interface for generating MG script files, allowing users who need more customizability to generate MG commands using their own code.
+
+## Usage
+
+The toolkit is designed to be imported and used in short Python scripts, which then generate the required MadGraph scripts. See the file `scripts/ultraheavy_diquark_original_paper_repro.py` for an example.
+
+After the script files have been generated and saved to disk, we also offer an utility script, `scripts/run_scripts.py`, which can help run the scripts sequentially on the local computer. It's best to run it through [`nohup`](https://en.wikipedia.org/wiki/Nohup):
+
+```shell
+nohup python3 scripts/run_scripts.py path/to/generated/scripts/directory &
+```
