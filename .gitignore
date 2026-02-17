@@ -14,3 +14,4 @@ nohup.out
 
 # MadGraph files, generated in the current directory when invoked
 /py.py
+/ME5_debug

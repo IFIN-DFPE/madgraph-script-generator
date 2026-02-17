@@ -1,4 +1,8 @@
 from pathlib import Path
+import signal
+import subprocess
+from types import FrameType
+from typing import Optional
 
 from tqdm import tqdm
 import typer
@@ -19,6 +23,24 @@ def main(
 
     print(f"Running MadGraph scripts from directory: {scripts_directory_path}")
 
+    running_processes = set[subprocess.Popen[bytes]]()
+
+    def signal_handler(signum: int, _: Optional[FrameType]) -> None:
+        if signum == signal.SIGINT or signum == signal.SIGTERM:
+            for process in running_processes:
+                try:
+                    process.kill()
+                except Exception as err:
+                    print(f"An error occurred while killing a MadGraph process: {err}")
+                    continue
+
+            exit(0)
+
+    # Set up various signal handlers to ensure that
+    # all running MadGraph processes are killed when the script is interrupted or terminated.
+    _ = signal.signal(signal.SIGINT, signal_handler)
+    _ = signal.signal(signal.SIGTERM, signal_handler)
+
     script_files = scripts_directory_path.glob(f"**/*{script_file_extension}")
     script_files = list(script_files)
 
@@ -30,7 +52,11 @@ def main(
         print(f"Running MadGraph script: {script_file}")
         print(f"Redirecting output to: {output_file_path}")
 
-        run_madgraph(script_file, output_file_path)
+        run_madgraph(
+            script_file,
+            output_file_path,
+            lambda process: running_processes.add(process),
+        )
 
 
 if __name__ == "__main__":
