@@ -2,7 +2,6 @@ from pathlib import Path
 import signal
 import subprocess
 from types import FrameType
-from typing import Optional
 
 from tqdm import tqdm
 import typer
@@ -25,7 +24,7 @@ def main(
 
     running_processes = set[subprocess.Popen[bytes]]()
 
-    def signal_handler(signum: int, _: Optional[FrameType]) -> None:
+    def signal_handler(signum: int, _: FrameType | None) -> None:
         if signum == signal.SIGINT or signum == signal.SIGTERM:
             for process in running_processes:
                 try:
@@ -47,7 +46,7 @@ def main(
     print(f"Found a total of {len(script_files)} script files to run")
 
     for script_file in tqdm(script_files, desc="Running MadGraph scripts"):
-        output_file_path = script_file.with_suffix(".madgraph.log")
+        output_file_path = script_file.with_suffix(".log")
 
         print(f"Running MadGraph script: {script_file}")
         print(f"Redirecting output to: {output_file_path}")

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from pathlib import Path
 from textwrap import TextWrapper
-from typing import Optional, TextIO, Union, final
+from typing import TextIO, final
 from typing_extensions import override
 
 
@@ -44,9 +44,7 @@ class DoneCommand(MadGraphCommand):
 class SetCommand(MadGraphCommand):
     "Command for setting a value within the run card or within some parameter card."
 
-    def __init__(
-        self, variable_name: str, value: str, card: Optional[str] = None
-    ) -> None:
+    def __init__(self, variable_name: str, value: str, card: str | None = None) -> None:
         self.variable = variable_name
         self.value = value
         self.card = card
@@ -63,15 +61,15 @@ class ImportModelCommand(MadGraphCommand):
     This is usually some variation of the Standard Model, or a Beyond Standard Model.
     """
 
-    model: Union[str, Path]
-    restriction: Optional[str]
-    options: Optional[str]
+    model: str | Path
+    restriction: str | None
+    options: str | None
 
     def __init__(
         self,
-        model_name_or_path: Union[str, Path],
-        restriction: Optional[str] = None,
-        options: Optional[str] = None,
+        model_name_or_path: str | Path,
+        restriction: str | None = None,
+        options: str | None = None,
     ):
         self.model = model_name_or_path
         self.restriction = restriction
@@ -91,8 +89,8 @@ class GenerateProcessCommand(MadGraphCommand):
     def __init__(
         self,
         process: str,
-        orders: Optional[str] = None,
-        subprocess_label: Optional[str] = None,
+        orders: str | None = None,
+        subprocess_label: str | None = None,
     ) -> None:
         self.process = process
         self.orders = orders
@@ -134,10 +132,10 @@ class LaunchCommand(MadGraphCommand):
     Configured tools and run/param cards can be customized before the run actually starts.
     """
 
-    run_name: Optional[str]
+    run_name: str | None
     "Name of the run to launch."
 
-    def __init__(self, run_name: Optional[str] = None) -> None:
+    def __init__(self, run_name: str | None = None) -> None:
         self.run_name = run_name
 
     @override
@@ -149,17 +147,17 @@ class LaunchCommand(MadGraphCommand):
 class SetExternalToolsCommand(MadGraphCommand):
     "Command for configuring which external tools to use during the run."
 
-    madspin: Optional[bool]
-    analysis: Optional[str]
-    shower: Optional[str]
-    detector: Optional[str]
+    madspin: bool | None
+    analysis: str | None
+    shower: str | None
+    detector: str | None
 
     def __init__(
         self,
-        madspin: Optional[bool] = None,
-        analysis: Optional[str] = None,
-        shower: Optional[str] = None,
-        detector: Optional[str] = None,
+        madspin: bool | None = None,
+        analysis: str | None = None,
+        shower: str | None = None,
+        detector: str | None = None,
     ) -> None:
         self.madspin = madspin
         self.analysis = analysis
@@ -183,6 +181,20 @@ class SetExternalToolsCommand(MadGraphCommand):
             tool_settings.append(f"detector={self.detector}".strip())
 
         return "\n".join(tool_settings)
+
+
+@final
+class DelphesCardCommand(MadGraphCommand):
+    "Command for telling MadGraph to use a specific Delphes card for detector simulation."
+
+    card_path: Path
+
+    def __init__(self, card_path: Path) -> None:
+        self.card_path = card_path
+
+    @override
+    def to_command_str(self) -> str:
+        return str(self.card_path)
 
 
 class ComputeWidthsCommand(MadGraphCommand):

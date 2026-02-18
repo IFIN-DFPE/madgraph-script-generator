@@ -3,13 +3,13 @@ to reproduce the main results of the paper https://arxiv.org/abs/2503.17031.
 """
 
 from pathlib import Path
-from typing import Annotated
 
 import typer
 
 from madgraph_script_generator.commands import (
     CommentCommand,
     ComputeWidthsCommand,
+    DelphesCardCommand,
     DoneCommand,
     GenerateProcessCommand,
     ImportModelCommand,
@@ -18,7 +18,6 @@ from madgraph_script_generator.commands import (
     OutputCommand,
     SetCommand,
     SetExternalToolsCommand,
-    convert_commands_to_str,
     write_commands_to_file,
 )
 
@@ -48,13 +47,13 @@ def phase_space_cuts_commands(suu_mass: float) -> list[MadGraphCommand]:
 
 
 def common_generation_commands(
-    suu_mass: float, seed: int = 17
+    output_path: Path, suu_mass: float, seed: int = 17
 ) -> list[MadGraphCommand]:
     commands: list[MadGraphCommand] = []
 
     commands += [
         SetExternalToolsCommand(
-            analysis="MadAnalysis5", shower="Pythia", detector="Delphes"
+            analysis="MadAnalysis5", shower="Pythia8", detector="Delphes"
         ),
         DoneCommand(),
     ]
@@ -94,6 +93,11 @@ def common_generation_commands(
         SetCommand("iseed", str(seed), card="run_card"),
     ]
 
+    commands += [
+        CommentCommand("Use the default Delphes card for ATLAS"),
+        DelphesCardCommand(output_path.resolve() / "Cards" / "delphes_card_ATLAS.dat"),
+    ]
+
     return commands
 
 
@@ -110,7 +114,7 @@ def generate_signal_wb_wb_commands(
     commands += [
         CommentCommand("Main process"),
         GenerateProcessCommand(
-            " p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > w+ b, w+ > j j))"
+            "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > w+ b, w+ > j j))"
         ),
     ]
 
@@ -121,7 +125,7 @@ def generate_signal_wb_wb_commands(
 
     commands.append(LaunchCommand())
 
-    commands += common_generation_commands(suu_mass)
+    commands += common_generation_commands(output_path, suu_mass)
 
     commands += [
         CommentCommand("Generate a reasonable number of events"),
@@ -173,7 +177,7 @@ def generate_background_ttbar_commands(
 
     commands.append(LaunchCommand())
 
-    commands += common_generation_commands(suu_mass)
+    commands += common_generation_commands(output_path, suu_mass)
 
     commands += [
         CommentCommand("Generate a sufficient number of background events"),
@@ -206,7 +210,7 @@ def generate_background_qcd_commands(
 
     commands.append(LaunchCommand())
 
-    commands += common_generation_commands(suu_mass)
+    commands += common_generation_commands(output_path, suu_mass)
 
     return commands
 
@@ -217,20 +221,14 @@ def main(
         __file__
     ).parent
     / "diquarkVquark2023_UFO",
-    scripts_output_directory: Annotated[Path, typer.Argument()] = Path(
+    scripts_output_directory: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
         "diquark-repro/scripts"
     ),
-    madgraph_output_directory: Annotated[Path, typer.Argument()] = Path(
+    madgraph_output_directory: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
         "diquark-repro/data"
     ),
-    debug: Annotated[
-        bool,
-        typer.Option(
-            help="Print generated commands to stdout before saving them to file"
-        ),
-    ] = False,
 ) -> None:
     scripts_output_directory = scripts_output_directory.resolve()
     madgraph_output_directory = madgraph_output_directory.resolve()
@@ -240,16 +238,13 @@ def main(
 
     print("Generating MadGraph command script for signal process...")
 
+    print("Generating script for S_{uu} -> \\chi \\chi -> Wb Wb process...")
+
     signal_name = f"Suu_chichi_WbWb_MSuu_{suu_mass:.1g}TeV"
 
     wb_wb_signal_commands = generate_signal_wb_wb_commands(
         diquark_model_path, madgraph_output_directory / "signal" / signal_name, suu_mass
     )
-
-    if debug:
-        print(f"=== Commands for signal {signal_name} ===")
-        print(convert_commands_to_str(wb_wb_signal_commands))
-        print()
 
     signal_script_path = (
         scripts_output_directory / "signal" / f"{signal_name}.madgraph.txt"
@@ -272,6 +267,10 @@ def main(
     bkg_qcd_scripts_output_path.mkdir(parents=True, exist_ok=True)
 
     for final_state_jets in range(1, 5):
+        print(
+            f"Generating script for QCD multijet background with {final_state_jets} final state jets..."
+        )
+
         background_name = f"qcd_multijet_{final_state_jets}_jets"
 
         qcd_multijet_commands = generate_background_qcd_commands(
@@ -279,13 +278,6 @@ def main(
             final_state_jets,
             suu_mass,
         )
-
-        if debug:
-            print(
-                f"=== Commands for QCD multijet with {final_state_jets} jets background ==="
-            )
-            print(convert_commands_to_str(qcd_multijet_commands))
-            print()
 
         write_commands_to_file(
             bkg_qcd_scripts_output_path / f"{background_name}.madgraph.txt",
@@ -298,6 +290,8 @@ def main(
     bkg_ttbar_scripts_output_path.mkdir(parents=True, exist_ok=True)
 
     for extra_jets in range(0, 3):
+        print(f"Generating script for ttbar + {extra_jets} jets background...")
+
         background_name = f"ttbar_plus_{extra_jets}_jets"
 
         ttbar_plus_jets_commands = generate_background_ttbar_commands(
@@ -305,11 +299,6 @@ def main(
             extra_jets,
             suu_mass,
         )
-
-        if debug:
-            print(f"=== Commands for ttbar + {extra_jets} jets background ===")
-            print(convert_commands_to_str(ttbar_plus_jets_commands))
-            print()
 
         write_commands_to_file(
             bkg_ttbar_scripts_output_path / f"{background_name}.madgraph.txt",

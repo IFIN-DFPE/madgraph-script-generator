@@ -1,14 +1,12 @@
 from pathlib import Path
 import subprocess
-from typing import Callable, Optional
+from typing import Callable
 
 
 def run_madgraph(
     script_file_path: Path,
     output_file_path: Path,
-    process_created_callback: Optional[
-        Callable[[subprocess.Popen[bytes]], None]
-    ] = None,
+    process_created_callback: Callable[[subprocess.Popen[bytes]], None] | None = None,
 ) -> None:
     """
     Runs MadGraph with the given script file.
@@ -41,3 +39,4 @@ def run_madgraph(
 
     except subprocess.CalledProcessError as err:
         print(f"An error occurred while running MadGraph: {err}")
+        raise
