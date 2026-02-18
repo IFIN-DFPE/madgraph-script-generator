@@ -214,8 +214,9 @@ def generate_background_qcd_commands(
 def main(
     diquark_model_path: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
-        "/data/iduminic/MG5_aMC_v3_5_12/models/diquarkVquark2023_UFO/"
-    ),
+        __file__
+    ).parent
+    / "diquarkVquark2023_UFO",
     scripts_output_directory: Annotated[Path, typer.Argument()] = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
         "diquark-repro/scripts"
