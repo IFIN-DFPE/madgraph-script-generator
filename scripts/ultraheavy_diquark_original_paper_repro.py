@@ -22,6 +22,9 @@ from madgraph_script_generator.commands import (
 )
 
 
+PROCESS_GENERATION_ORDERS: str = "QCD=99 QED=0"
+
+
 def common_initial_commands() -> list[MadGraphCommand]:
     commands: list[MadGraphCommand] = []
 
@@ -33,7 +36,7 @@ def common_initial_commands() -> list[MadGraphCommand]:
 
     commands += [
         CommentCommand("Import the Standard Model"),
-        ImportModelCommand("sm"),
+        ImportModelCommand("sm-full"),
     ]
 
     return commands
@@ -114,7 +117,8 @@ def generate_signal_wb_wb_commands(
     commands += [
         CommentCommand("Main process"),
         GenerateProcessCommand(
-            "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > w+ b, w+ > j j))"
+            "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > w+ b, w+ > j j))",
+            PROCESS_GENERATION_ORDERS,
         ),
     ]
 
@@ -167,7 +171,9 @@ def generate_background_ttbar_commands(
 
     commands += [
         CommentCommand("Generate t tbar background"),
-        GenerateProcessCommand(f"p p > t t~{extra_jets_str}", "QED=0"),
+        GenerateProcessCommand(
+            f"p p > t t~{extra_jets_str}", PROCESS_GENERATION_ORDERS
+        ),
     ]
 
     commands += [
@@ -200,7 +206,7 @@ def generate_background_qcd_commands(
 
     commands += [
         CommentCommand("Generate QCD multijet background"),
-        GenerateProcessCommand(f"p p > {jets_str}", "QED=0"),
+        GenerateProcessCommand(f"p p > {jets_str}", PROCESS_GENERATION_ORDERS),
     ]
 
     commands += [
@@ -211,6 +217,11 @@ def generate_background_qcd_commands(
     commands.append(LaunchCommand())
 
     commands += common_generation_commands(output_path, suu_mass)
+
+    commands += [
+        CommentCommand("Generate a sufficient number of background events"),
+        SetCommand("nevents", "50000"),
+    ]
 
     return commands
 
