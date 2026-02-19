@@ -10,7 +10,9 @@ from madgraph_script_generator.runner import run_madgraph
 
 
 def main(
-    scripts_directory_path: Path, script_file_extension: str = ".madgraph.txt"
+    scripts_directory_path: Path,
+    script_file_extension: str = ".madgraph.txt",
+    skip_existing: bool = False,
 ) -> None:
     if not scripts_directory_path.exists():
         print("Provided scripts directory doesn't exist")
@@ -47,6 +49,10 @@ def main(
 
     for script_file in tqdm(script_files, desc="Running MadGraph scripts"):
         output_file_path = script_file.with_suffix(".log")
+
+        if skip_existing and output_file_path.exists():
+            print(f"Output file already exists for script {script_file}, skipping...")
+            continue
 
         print(f"Running MadGraph script: {script_file}")
         print(f"Redirecting output to: {output_file_path}")
