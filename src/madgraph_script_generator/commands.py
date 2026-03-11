@@ -55,6 +55,19 @@ class SetCommand(MadGraphCommand):
 
 
 @final
+class DefineCommand(MadGraphCommand):
+    "Command for defining new particle aliases."
+
+    def __init__(self, label: str, members: str) -> None:
+        self.label = label
+        self.members = members
+
+    @override
+    def to_command_str(self) -> str:
+        return f"define {self.label} = {self.members}".strip()
+
+
+@final
 class ImportModelCommand(MadGraphCommand):
     """Command for importing a model of particle physics, in UFO format.
 
@@ -80,11 +93,12 @@ class ImportModelCommand(MadGraphCommand):
         return f"import model {self.model}{self.restriction or ''} {self.options or ''}".strip()
 
 
-@final
-class GenerateProcessCommand(MadGraphCommand):
-    """Command for telling MadGraph for which interaction (process)
-    to generate diagrams (subprocesses).
-    """
+class ProcessDefinitionCommand(MadGraphCommand, ABC):
+    "Common abstract base class for the `generate / add process` commands."
+
+    process: str
+    orders: str | None
+    subprocess_label: str | None
 
     def __init__(
         self,
@@ -103,9 +117,35 @@ class GenerateProcessCommand(MadGraphCommand):
 
         self.subprocess_label = subprocess_label
 
+    @staticmethod
+    @abstractmethod
+    def command_name() -> str: ...
+
     @override
     def to_command_str(self) -> str:
-        return f"generate {self.process} {self.orders or ''} {self.subprocess_label or ''}".strip()
+        return f"{self.command_name()} {self.process} {self.orders or ''} {self.subprocess_label or ''}".strip()
+
+
+@final
+class GenerateProcessCommand(ProcessDefinitionCommand):
+    """Command for telling MadGraph for which interaction (process)
+    to generate diagrams (subprocesses).
+    """
+
+    @override
+    @staticmethod
+    def command_name() -> str:
+        return "generate"
+
+
+@final
+class AddProcessCommand(ProcessDefinitionCommand):
+    """Command for including additional processes in generation run."""
+
+    @override
+    @staticmethod
+    def command_name() -> str:
+        return "add process"
 
 
 @final
