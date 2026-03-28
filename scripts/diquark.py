@@ -62,8 +62,8 @@ def common_generation_commands(
     commands += [
         CommentCommand("Use LHAPDF"),
         SetCommand("pdlabel", "lhapdf"),
-        CommentCommand("NNPDF4.0 aN3LO"),
-        SetCommand("lhaid", "336700"),
+        CommentCommand("NNPDF4.0 LO PDF set, with alpha_s = 0.118"),
+        SetCommand("lhaid", "331900"),
     ]
 
     commands += [
@@ -120,6 +120,7 @@ class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
     suu_mass: float
     seed: int | None
     delphes_card_path: Path | None
+    num_events: int
 
     def __init__(
         self,
@@ -128,12 +129,17 @@ class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
         suu_mass: float,
         seed: int | None = None,
         delphes_card_path: Path | None = None,
+        # 100.000 events is more than enough for the signal,
+        # even though we'd have few counts in the real data.
+        # It's enough for the ML algorithm.
+        num_events: int = 100_000,
     ) -> None:
         self.diquark_model_path = diquark_model_path
         self.output_path = output_path
         self.suu_mass = suu_mass
         self.seed = seed
         self.delphes_card_path = delphes_card_path
+        self.num_events = num_events
 
     @abstractmethod
     def process_generation_commands(self) -> list[MadGraphCommand]: ...
@@ -165,7 +171,7 @@ class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
 
         commands += [
             CommentCommand("Generate a reasonable number of events"),
-            SetCommand("nevents", "100000"),
+            SetCommand("nevents", str(self.num_events)),
         ]
 
         commands += [
@@ -257,7 +263,8 @@ class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
         max_jets: int,
         seed: int | None = None,
         delphes_card_path: Path | None = None,
-        num_events: int = 500_000,
+        # Dominant background, we need to generate more events for it.
+        num_events: int = 1_000_000,
     ) -> None:
         super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
         self.max_jets = max_jets
