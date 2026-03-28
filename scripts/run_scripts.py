@@ -57,11 +57,18 @@ def main(
         print(f"Running MadGraph script: {script_file}")
         print(f"Redirecting output to: {output_file_path}")
 
-        run_madgraph(
-            script_file,
-            output_file_path,
-            lambda process: running_processes.add(process),
-        )
+        try:
+            run_madgraph(
+                script_file,
+                output_file_path,
+                lambda process: running_processes.add(process),
+            )
+
+        except Exception as err:
+            print(
+                f"An error occurred while running MadGraph script {script_file}: {err}"
+            )
+            continue
 
 
 if __name__ == "__main__":

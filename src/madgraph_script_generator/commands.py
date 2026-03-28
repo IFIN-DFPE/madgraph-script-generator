@@ -106,8 +106,8 @@ class ProcessDefinitionCommand(MadGraphCommand, ABC):
         orders: str | None = None,
         subprocess_label: str | None = None,
     ) -> None:
-        self.process = process
-        self.orders = orders
+        self.process = process.strip()
+        self.orders = orders.strip() if orders else None
 
         if subprocess_label:
             subprocess_label = subprocess_label.strip()
@@ -123,7 +123,7 @@ class ProcessDefinitionCommand(MadGraphCommand, ABC):
 
     @override
     def to_command_str(self) -> str:
-        return f"{self.command_name()} {self.process} {self.orders or ''} {self.subprocess_label or ''}".strip()
+        return f"{self.command_name()} {self.process} {f'{self.orders} ' if self.orders else ''}{self.subprocess_label or ''}".strip()
 
 
 @final
