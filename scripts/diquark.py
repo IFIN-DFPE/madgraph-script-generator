@@ -28,7 +28,7 @@ def common_initial_commands(
     commands += [
         CommentCommand("Configure parallelism"),
         SetCommand("run_mode", "2"),
-        SetCommand("nb_core", "32"),
+        SetCommand("nb_core", "64"),
     ]
 
     commands += [
@@ -57,10 +57,6 @@ def phase_space_cuts_commands(suu_mass: float) -> list[MadGraphCommand]:
             "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
         ),
         SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
-        CommentCommand("No cuts on the jets, matching what Pythia8 does by default."),
-        SetCommand("ptj", "1"),
-        SetCommand("etaj", "-1"),
-        SetCommand("drjj", "-1"),
     ]
 
 
@@ -388,6 +384,44 @@ class TTBarBackgroundGenerator(BackgroundProcessCommandsGenerator):
             commands.append(
                 AddProcessCommand(
                     f"p p > t t~ {extra_jets}",
+                    subprocess_label=f"@{num_extra_jets}",
+                )
+            )
+
+        return commands
+
+
+@final
+class WPlusJetsBackgroundGenerator(BackgroundProcessCommandsGenerator):
+    max_extra_jets: int
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        max_extra_jets: int = 4,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 100_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+        self.max_extra_jets = max_extra_jets
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        commands: list[MadGraphCommand] = [
+            CommentCommand("Generate w+ + jets background"),
+            GenerateProcessCommand(
+                "p p > w+",
+                subprocess_label="@0",
+            ),
+        ]
+
+        for num_extra_jets in range(1, self.max_extra_jets + 1):
+            extra_jets = " ".join("j" * num_extra_jets)
+            commands.append(
+                AddProcessCommand(
+                    f"p p > w+ {extra_jets}",
                     subprocess_label=f"@{num_extra_jets}",
                 )
             )
