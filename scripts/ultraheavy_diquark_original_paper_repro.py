@@ -2,6 +2,7 @@
 to reproduce the main results of the paper https://arxiv.org/abs/2503.17031.
 """
 
+from enum import Enum
 from pathlib import Path
 import sys
 from typing import Annotated, final, override
@@ -15,6 +16,7 @@ from madgraph_script_generator.commands import (
 
 sys.path.append(str(Path(__file__).parent))
 from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
+    Pythia8BackgroundProcessGenerator,
     SignalProcessCommandsGenerator,
     QCDBackgroundGenerator,
     TTBarBackgroundGenerator,
@@ -33,6 +35,37 @@ class WBWB_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
         ]
 
 
+class BackgroundGenerationStrategy(str, Enum):
+    GROUP_BY_PROCESS = "group_by_process"
+    INDIVIDUAL_PROCESSES = "individual_processes"
+
+
+PYTHIA8_PROCESSES: dict[str, str] = {
+    "gg_bbar": "g g > b b~",
+    "gg_ccbar": "g g > c c~",
+    "gg_gg": "g g > g g",
+    "qqbar_gg": "q q~ > g g",
+    "gg_qqbar": "g g > q q~",
+    "qg_qg": "q g > q g",
+    "qqbar_bbbar": "q q~ > b b~",
+    "qqbar_ccbar": "q q~ > c c~",
+    "qq_qq": "q q > q q",
+    "qqbar_qqbar": "q q~ > q q~",
+    "gg_Hg": "g g > h g",
+    "ff_HZ": "f f~ > h z",
+    "ff_HW": "f f~ > h w+",
+    "ff_Hff": "f f~ > h f f~",
+    "ff_Hff2": "f f > h f f",
+    "gg_Httbar": "g g > h t t~",
+    "qq_Httbar": "q q~ > h t t~",
+    "qg_Hq": "q g > h q",
+    "ffbar_Wgm": "f f~ > w+ g",
+    "ffbar_WZ": "f f~ > w+ z",
+    "ffbar_WW": "f f~ > w+ w-",
+    "ffbar_Wff": "f f~ > w+ f f~",
+}
+
+
 def main(
     diquark_model_path: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
@@ -46,6 +79,10 @@ def main(
         # pyright: ignore[reportCallInDefaultInitializer]
         "simulations/diquark-repro"
     ),
+    background_generation_strategy: Annotated[
+        BackgroundGenerationStrategy,
+        typer.Option(help="Strategy for generating background processes"),
+    ] = BackgroundGenerationStrategy.GROUP_BY_PROCESS,
     seed: Annotated[int, typer.Option(help="Random seed for reproducibility")] = 123,
 ) -> None:
     output_directory = output_directory.resolve()
@@ -79,26 +116,53 @@ def main(
 
     backgrounds_output_path = madgraph_output_directory / "background"
 
-    QCDBackgroundGenerator(
-        backgrounds_output_path / "qcd",
-        suu_mass,
-        max_jets=4,
-        seed=seed,
-    ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
+    if background_generation_strategy == BackgroundGenerationStrategy.GROUP_BY_PROCESS:
+        print("Generating MadGraph scripts for backgrounds grouped by process type...")
 
-    TTBarBackgroundGenerator(
-        backgrounds_output_path / "ttbar",
-        suu_mass,
-        max_extra_jets=2,
-        seed=seed,
-    ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
+        QCDBackgroundGenerator(
+            backgrounds_output_path / "qcd",
+            suu_mass,
+            max_jets=4,
+            seed=seed,
+        ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
 
-    DibosonBackgroundGenerator(
-        backgrounds_output_path / "diboson",
-        suu_mass,
-        max_extra_jets=2,
-        seed=seed,
-    ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
+        TTBarBackgroundGenerator(
+            backgrounds_output_path / "ttbar",
+            suu_mass,
+            max_extra_jets=2,
+            seed=seed,
+        ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
+
+        DibosonBackgroundGenerator(
+            backgrounds_output_path / "diboson",
+            suu_mass,
+            max_extra_jets=2,
+            seed=seed,
+        ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
+
+    elif (
+        background_generation_strategy
+        == BackgroundGenerationStrategy.INDIVIDUAL_PROCESSES
+    ):
+        print("Generating MadGraph scripts for individual background processes...")
+
+        for process_name, process_definition in PYTHIA8_PROCESSES.items():
+            print(f"Generating script for {process_name} process...")
+
+            process_output_path = backgrounds_output_path / process_name
+            Pythia8BackgroundProcessGenerator(
+                process_definition,
+                process_output_path,
+                suu_mass,
+                seed=seed,
+            ).save_to_file(
+                background_scripts_output_path / f"{process_name}.madgraph.txt"
+            )
+
+    else:
+        raise ValueError(  # pyright: ignore[reportUnreachable]
+            f"Invalid background generation strategy: {background_generation_strategy}"
+        )
 
 
 if __name__ == "__main__":

@@ -20,13 +20,15 @@ from madgraph_script_generator.commands import (
 )
 
 
-def common_initial_commands() -> list[MadGraphCommand]:
+def common_initial_commands(
+    include_pythia8_particle_definitions: bool = False,
+) -> list[MadGraphCommand]:
     commands: list[MadGraphCommand] = []
 
     commands += [
         CommentCommand("Configure parallelism"),
         SetCommand("run_mode", "2"),
-        SetCommand("nb_core", "120"),
+        SetCommand("nb_core", "32"),
     ]
 
     commands += [
@@ -34,13 +36,31 @@ def common_initial_commands() -> list[MadGraphCommand]:
         ImportModelCommand("sm-full"),
     ]
 
+    if include_pythia8_particle_definitions:
+        commands += [
+            CommentCommand(
+                "Define a new multiparticle for quarks, matching the Pythia8 definition of the q multiparticle."
+            ),
+            DefineCommand("q", "u c d s b"),
+            DefineCommand("q~", "u~ c~ d~ s~ b~"),
+            DefineCommand("f", "u c d s b"),
+            DefineCommand("f~", "u~ c~ d~ s~ b~"),
+        ]
+
     return commands
 
 
 def phase_space_cuts_commands(suu_mass: float) -> list[MadGraphCommand]:
     return [
         CommentCommand("=== Phase space cuts ==="),
+        CommentCommand(
+            "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
+        ),
         SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
+        CommentCommand("No cuts on the jets, matching what Pythia8 does by default."),
+        SetCommand("ptj", "1"),
+        SetCommand("etaj", "-1"),
+        SetCommand("drjj", "-1"),
     ]
 
 
@@ -64,6 +84,8 @@ def common_generation_commands(
         SetCommand("pdlabel", "lhapdf"),
         CommentCommand("NNPDF4.0 LO PDF set, with alpha_s = 0.118"),
         SetCommand("lhaid", "331900"),
+        # CommentCommand("NNPDF 2.3 QCD + QED LO PDF set, with alpha_s = 0.130"),
+        # SetCommand("lhaid", "247000"),
     ]
 
     commands += [
@@ -75,14 +97,16 @@ def common_generation_commands(
     commands += [
         CommentCommand("Enable systematic uncertainty calculation"),
         SetCommand("use_syst", "T"),
+        # CommentCommand("Disable systematic uncertainty calculation"),
+        # SetCommand("use_syst", "F"),
     ]
 
     commands += [
         CommentCommand("=== Jet matching and merging ==="),
         CommentCommand("Enable MLM matching scheme"),
         SetCommand("ickkw", "1"),
-        CommentCommand("ME-PS boundary is at 100 GeV"),
-        SetCommand("xqcut", "100.0"),
+        CommentCommand("ME-PS boundary is at 30 GeV"),
+        SetCommand("xqcut", "30.0"),
     ]
 
     commands += phase_space_cuts_commands(suu_mass)
@@ -102,6 +126,14 @@ def common_generation_commands(
                 output_path.resolve() / "Cards" / "delphes_card_ATLAS.dat"
             ),
         ]
+
+    # Not needed, they are "on" by default.
+    # commands += [
+    #     CommentCommand("Enable MPI, ISR and FSR in Pythia"),
+    #     SetCommand("PartonLevel:MPI", "on", card="pythia8_card"),
+    #     SetCommand("PartonLevel:ISR", "on", card="pythia8_card"),
+    #     SetCommand("PartonLevel:FSR", "on", card="pythia8_card"),
+    # ]
 
     return commands
 
@@ -204,6 +236,7 @@ class BackgroundProcessCommandsGenerator(CommandsGenerator, ABC):
     seed: int | None
     delphes_card_path: Path | None
     num_events: int
+    include_pythia8_particle_definitions: bool
 
     def __init__(
         self,
@@ -211,7 +244,7 @@ class BackgroundProcessCommandsGenerator(CommandsGenerator, ABC):
         suu_mass: float,
         seed: int | None,
         delphes_card_path: Path | None,
-        num_events: int = 500_000,
+        num_events: int,
     ) -> None:
         self.output_path = output_path
         self.suu_mass = suu_mass
@@ -221,12 +254,16 @@ class BackgroundProcessCommandsGenerator(CommandsGenerator, ABC):
         assert num_events > 0, "Number of events must be positive"
         self.num_events = num_events
 
+        self.include_pythia8_particle_definitions = False
+
     @abstractmethod
     def process_generation_commands(self) -> list[MadGraphCommand]: ...
 
     @override
     def generate(self) -> list[MadGraphCommand]:
-        commands = common_initial_commands()
+        commands = common_initial_commands(
+            include_pythia8_particle_definitions=self.include_pythia8_particle_definitions
+        )
 
         commands += self.process_generation_commands()
 
@@ -253,6 +290,35 @@ class BackgroundProcessCommandsGenerator(CommandsGenerator, ABC):
 
 
 @final
+class Pythia8BackgroundProcessGenerator(BackgroundProcessCommandsGenerator):
+    process: str
+
+    def __init__(
+        self,
+        process: str,
+        output_path: Path,
+        suu_mass: float,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        # Less events per invidiual background process,
+        # since there are many of them.
+        num_events: int = 50_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+        self.process = process
+        self.include_pythia8_particle_definitions = True
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        commands: list[MadGraphCommand] = [
+            CommentCommand("Generate background using Pythia8's built-in processes"),
+            GenerateProcessCommand(self.process),
+        ]
+
+        return commands
+
+
+@final
 class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
     max_jets: int
 
@@ -264,7 +330,7 @@ class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
         seed: int | None = None,
         delphes_card_path: Path | None = None,
         # Dominant background, we need to generate more events for it.
-        num_events: int = 1_000_000,
+        num_events: int = 500_000,
     ) -> None:
         super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
         self.max_jets = max_jets
@@ -302,7 +368,7 @@ class TTBarBackgroundGenerator(BackgroundProcessCommandsGenerator):
         max_extra_jets: int,
         seed: int | None = None,
         delphes_card_path: Path | None = None,
-        num_events: int = 500_000,
+        num_events: int = 300_000,
     ) -> None:
         super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
         self.max_extra_jets = max_extra_jets
@@ -340,7 +406,7 @@ class DibosonBackgroundGenerator(BackgroundProcessCommandsGenerator):
         max_extra_jets: int = 1,
         seed: int | None = None,
         delphes_card_path: Path | None = None,
-        num_events: int = 300_000,
+        num_events: int = 100_000,
     ) -> None:
         super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
         self.max_extra_jets = max_extra_jets
