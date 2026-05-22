@@ -19,6 +19,7 @@ from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
     QCDBackgroundGenerator,
     TTBarBackgroundGenerator,
     DibosonBackgroundGenerator,
+    WPlusJetsBackgroundGenerator,
 )
 
 
@@ -124,13 +125,6 @@ def main(
         "simulations/diquark-many-jets"
     ),
     seed: Annotated[int, typer.Option(help="Random seed for reproducibility")] = 42,
-    # Configure Delphes to simulate the ATLAS detector with detector pile-up
-    delphes_card_path: Path | None = None,
-    # TODO: need to review the Delphes card for pile-up simulation
-    # TODO: we could also need to write a wrapper script to shard the input data file and help parallelize the Delphes simulation jobs, otherwise it takes too long
-    # Path(
-    #     "/data/gmajeri/diquark-simulations/pileup/delphes_card_ATLAS_PileUp.tcl"
-    # ),
 ) -> None:
     output_directory = output_directory.resolve()
     output_directory = output_directory / f"Suu_{suu_mass:.1g}TeV"
@@ -163,7 +157,6 @@ def main(
             output_path,
             suu_mass,
             seed=seed,
-            delphes_card_path=delphes_card_path,
         ).save_to_file(signal_scripts_output_path / f"{full_signal_name}.madgraph.txt")
 
     print("Generating MadGraph command scripts for background processes...")
@@ -178,7 +171,8 @@ def main(
         suu_mass,
         max_jets=4,
         seed=seed,
-        delphes_card_path=delphes_card_path,
+        # Matching efficiency: ~25%
+        num_events=500_000,
     ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
 
     TTBarBackgroundGenerator(
@@ -186,15 +180,26 @@ def main(
         suu_mass,
         max_extra_jets=2,
         seed=seed,
-        delphes_card_path=delphes_card_path,
+        # Matching efficiency: ~40%
+        num_events=300_000,
     ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
+
+    WPlusJetsBackgroundGenerator(
+        backgrounds_output_path / "w+",
+        suu_mass,
+        max_extra_jets=2,
+        seed=seed,
+        # Matching efficiency: ~60%
+        num_events=200_000,
+    ).save_to_file(background_scripts_output_path / "w+.madgraph.txt")
 
     DibosonBackgroundGenerator(
         backgrounds_output_path / "diboson",
         suu_mass,
-        max_extra_jets=1,
+        max_extra_jets=2,
         seed=seed,
-        delphes_card_path=delphes_card_path,
+        # Matching efficiency: ~75%
+        num_events=150_000,
     ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
 
 

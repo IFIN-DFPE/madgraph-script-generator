@@ -28,12 +28,12 @@ def common_initial_commands(
     commands += [
         CommentCommand("Configure parallelism"),
         SetCommand("run_mode", "2"),
-        SetCommand("nb_core", "64"),
+        SetCommand("nb_core", "120"),
     ]
 
     commands += [
         CommentCommand("Import the Standard Model"),
-        ImportModelCommand("sm-full"),
+        ImportModelCommand("sm"),
     ]
 
     if include_pythia8_particle_definitions:
@@ -97,12 +97,14 @@ def common_generation_commands(
         # SetCommand("use_syst", "F"),
     ]
 
+    xqcut_value_gev = 30.0
+
     commands += [
         CommentCommand("=== Jet matching and merging ==="),
         CommentCommand("Enable MLM matching scheme"),
         SetCommand("ickkw", "1"),
-        CommentCommand("ME-PS boundary is at 30 GeV"),
-        SetCommand("xqcut", "30.0"),
+        CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
+        SetCommand("xqcut", str(xqcut_value_gev)),
     ]
 
     commands += phase_space_cuts_commands(suu_mass)
@@ -117,9 +119,12 @@ def common_generation_commands(
         commands.append(DelphesCardCommand(delphes_card_path.resolve()))
     else:
         commands += [
-            CommentCommand("Use the default Delphes card for ATLAS"),
+            # CommentCommand("Use the default Delphes card for ATLAS"),
             DelphesCardCommand(
-                output_path.resolve() / "Cards" / "delphes_card_ATLAS.dat"
+                # output_path.resolve() / "Cards" / "delphes_card_ATLAS.dat"
+                Path(
+                    "/data/gmajeri/diquark-simulations/pileup/delphes_card_ATLAS_PileUp.tcl"
+                )
             ),
         ]
 

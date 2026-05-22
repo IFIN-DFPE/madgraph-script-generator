@@ -121,36 +121,44 @@ def main(
     if background_generation_strategy == BackgroundGenerationStrategy.GROUP_BY_PROCESS:
         print("Generating MadGraph scripts for backgrounds grouped by process type...")
 
+        print("Generating script for QCD multijet background...")
         QCDBackgroundGenerator(
             backgrounds_output_path / "qcd",
             suu_mass,
             max_jets=4,
             seed=seed,
-            num_events=100_000,
+            # Matching efficiency: ~25%
+            num_events=500_000,
         ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
 
+        print("Generating script for top-antitop background...")
         TTBarBackgroundGenerator(
             backgrounds_output_path / "ttbar",
             suu_mass,
-            max_extra_jets=4,
+            max_extra_jets=2,
             seed=seed,
-            num_events=100_000,
+            # Matching efficiency: ~40%
+            num_events=300_000,
         ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
 
+        print("Generating script for W+ background...")
         WPlusJetsBackgroundGenerator(
             backgrounds_output_path / "w_plus_jets",
             suu_mass,
-            max_extra_jets=4,
+            max_extra_jets=2,
             seed=seed,
-            num_events=100_000,
+            # Matching efficiency: ~60%
+            num_events=200_000,
         ).save_to_file(background_scripts_output_path / "w_plus_jets.madgraph.txt")
 
+        print("Generating script for diboson pairs background...")
         DibosonBackgroundGenerator(
             backgrounds_output_path / "diboson",
             suu_mass,
             max_extra_jets=2,
             seed=seed,
-            num_events=100_000,
+            # Matching efficiency: ~75%
+            num_events=150_000,
         ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
 
     elif (
