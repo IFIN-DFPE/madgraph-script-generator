@@ -20,131 +20,136 @@ from madgraph_script_generator.commands import (
 )
 
 
-def common_initial_commands(
-    include_pythia8_particle_definitions: bool = False,
-) -> list[MadGraphCommand]:
-    commands: list[MadGraphCommand] = []
-
-    commands += [
-        CommentCommand("Configure parallelism"),
-        SetCommand("run_mode", "2"),
-        SetCommand("nb_core", "120"),
-    ]
-
-    commands += [
-        CommentCommand("Import the Standard Model"),
-        ImportModelCommand("sm"),
-    ]
-
-    if include_pythia8_particle_definitions:
-        commands += [
-            CommentCommand(
-                "Define a new multiparticle for quarks, matching the Pythia8 definition of the q multiparticle."
-            ),
-            DefineCommand("q", "u c d s b"),
-            DefineCommand("q~", "u~ c~ d~ s~ b~"),
-            DefineCommand("f", "u c d s b"),
-            DefineCommand("f~", "u~ c~ d~ s~ b~"),
-        ]
-
-    return commands
-
-
-def phase_space_cuts_commands(suu_mass: float) -> list[MadGraphCommand]:
-    return [
-        CommentCommand("=== Phase space cuts ==="),
-        CommentCommand(
-            "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
-        ),
-        SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
-    ]
-
-
-def common_generation_commands(
-    output_path: Path,
-    suu_mass: float,
-    seed: int | None,
-    delphes_card_path: Path | None = None,
-) -> list[MadGraphCommand]:
-    commands: list[MadGraphCommand] = []
-
-    commands += [
-        SetExternalToolsCommand(
-            analysis="MadAnalysis5", shower="Pythia8", detector="Delphes"
-        ),
-        DoneCommand(),
-    ]
-
-    commands += [
-        CommentCommand("Use LHAPDF"),
-        SetCommand("pdlabel", "lhapdf"),
-        CommentCommand("NNPDF4.0 LO PDF set, with alpha_s = 0.118"),
-        SetCommand("lhaid", "331900"),
-        # CommentCommand("NNPDF 2.3 QCD + QED LO PDF set, with alpha_s = 0.130"),
-        # SetCommand("lhaid", "247000"),
-    ]
-
-    commands += [
-        CommentCommand("Set the collider energy, sqrt(s) = 13.6 TeV"),
-        SetCommand("ebeam1", "6800"),
-        SetCommand("ebeam2", "6800"),
-    ]
-
-    commands += [
-        CommentCommand("Enable systematic uncertainty calculation"),
-        SetCommand("use_syst", "T"),
-        # CommentCommand("Disable systematic uncertainty calculation"),
-        # SetCommand("use_syst", "F"),
-    ]
-
-    xqcut_value_gev = 30.0
-
-    commands += [
-        CommentCommand("=== Jet matching and merging ==="),
-        CommentCommand("Enable MLM matching scheme"),
-        SetCommand("ickkw", "1"),
-        CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
-        SetCommand("xqcut", str(xqcut_value_gev)),
-    ]
-
-    commands += phase_space_cuts_commands(suu_mass)
-
-    if seed is not None:
-        commands += [
-            CommentCommand("Fix the seed for reproducibility"),
-            SetCommand("iseed", str(seed), card="run_card"),
-        ]
-
-    if delphes_card_path:
-        commands.append(DelphesCardCommand(delphes_card_path.resolve()))
-    else:
-        commands += [
-            # CommentCommand("Use the default Delphes card for ATLAS"),
-            DelphesCardCommand(
-                # output_path.resolve() / "Cards" / "delphes_card_ATLAS.dat"
-                Path(
-                    "/data/gmajeri/diquark-simulations/pileup/delphes_card_ATLAS_PileUp.tcl"
-                )
-            ),
-        ]
-
-    # Not needed, they are "on" by default.
-    # commands += [
-    #     CommentCommand("Enable MPI, ISR and FSR in Pythia"),
-    #     SetCommand("PartonLevel:MPI", "on", card="pythia8_card"),
-    #     SetCommand("PartonLevel:ISR", "on", card="pythia8_card"),
-    #     SetCommand("PartonLevel:FSR", "on", card="pythia8_card"),
-    # ]
-
-    return commands
-
-
 class CommandsGenerator(ABC):
     @abstractmethod
     def generate(self) -> list[MadGraphCommand]: ...
 
     def save_to_file(self, path: Path) -> None:
         write_commands_to_file(path, self.generate())
+
+    def _common_initial_commands(
+        self,
+        include_pythia8_particle_definitions: bool = False,
+    ) -> list[MadGraphCommand]:
+        commands: list[MadGraphCommand] = []
+
+        commands += [
+            CommentCommand("Configure parallelism"),
+            SetCommand("run_mode", "2"),
+            SetCommand("nb_core", "120"),
+        ]
+
+        commands += [
+            CommentCommand("Import the Standard Model"),
+            ImportModelCommand("sm"),
+        ]
+
+        if include_pythia8_particle_definitions:
+            commands += [
+                CommentCommand(
+                    "Define a new multiparticle for quarks, matching the Pythia8 definition of the q multiparticle."
+                ),
+                DefineCommand("q", "u c d s b"),
+                DefineCommand("q~", "u~ c~ d~ s~ b~"),
+                DefineCommand("f", "u c d s b"),
+                DefineCommand("f~", "u~ c~ d~ s~ b~"),
+            ]
+
+        return commands
+
+    def _phase_space_cuts_commands(self, suu_mass: float) -> list[MadGraphCommand]:
+        commands: list[MadGraphCommand] = [
+            CommentCommand("=== Phase space cuts ==="),
+            CommentCommand(
+                "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
+            ),
+            SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
+        ]
+
+        if isinstance(self, BackgroundProcessCommandsGenerator):
+            commands += [
+                CommentCommand(
+                    "Set the minimum sum of pTs of the jets, to focus on the harder part of the phase space."
+                ),
+                SetCommand("htjmin", f"{0.15 * suu_mass * 1000:.0f}"),
+            ]
+
+        return commands
+
+    def _common_generation_commands(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        # xqcut_value_gev: float = 30.0,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+    ) -> list[MadGraphCommand]:
+        commands: list[MadGraphCommand] = []
+
+        commands += [
+            SetExternalToolsCommand(
+                analysis="MadAnalysis5", shower="Pythia8", detector="Delphes"
+            ),
+            DoneCommand(),
+        ]
+
+        commands += [
+            CommentCommand("Use LHAPDF"),
+            SetCommand("pdlabel", "lhapdf"),
+            CommentCommand("NNPDF4.0 LO PDF set, with alpha_s = 0.118"),
+            SetCommand("lhaid", "331900"),
+            # CommentCommand("NNPDF 2.3 QCD + QED LO PDF set, with alpha_s = 0.130"),
+            # SetCommand("lhaid", "247000"),
+        ]
+
+        commands += [
+            CommentCommand("Set the collider energy, sqrt(s) = 13.6 TeV"),
+            SetCommand("ebeam1", "6800"),
+            SetCommand("ebeam2", "6800"),
+        ]
+
+        commands += [
+            # CommentCommand("Enable systematic uncertainty calculation"),
+            # SetCommand("use_syst", "T"),
+            CommentCommand("Disable systematic uncertainty calculation"),
+            SetCommand("use_syst", "F"),
+        ]
+
+        commands += [
+            CommentCommand("=== Jet matching and merging ==="),
+            CommentCommand("Enable MLM matching scheme"),
+            SetCommand("ickkw", "1"),
+            # CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
+            # SetCommand("xqcut", str(xqcut_value_gev)),
+        ]
+
+        commands += self._phase_space_cuts_commands(suu_mass)
+
+        if seed is not None:
+            commands += [
+                CommentCommand("Fix the seed for reproducibility"),
+                SetCommand("iseed", str(seed), card="run_card"),
+            ]
+
+        if delphes_card_path:
+            commands.append(DelphesCardCommand(delphes_card_path.resolve()))
+        else:
+            commands += [
+                CommentCommand("Use the default Delphes card for ATLAS"),
+                DelphesCardCommand(
+                    output_path.resolve() / "Cards" / "delphes_card_ATLAS.dat"
+                ),
+            ]
+
+        # Not needed, they are "on" by default.
+        # commands += [
+        #     CommentCommand("Enable MPI, ISR and FSR in Pythia"),
+        #     SetCommand("PartonLevel:MPI", "on", card="pythia8_card"),
+        #     SetCommand("PartonLevel:ISR", "on", card="pythia8_card"),
+        #     SetCommand("PartonLevel:FSR", "on", card="pythia8_card"),
+        # ]
+
+        return commands
 
 
 class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
@@ -179,7 +184,7 @@ class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
 
     @override
     def generate(self) -> list[MadGraphCommand]:
-        commands = common_initial_commands()
+        commands = self._common_initial_commands()
 
         commands += [
             CommentCommand("Import BSM diquark model"),
@@ -195,7 +200,7 @@ class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
 
         commands.append(LaunchCommand())
 
-        commands += common_generation_commands(
+        commands += self._common_generation_commands(
             self.output_path,
             self.suu_mass,
             seed=self.seed,
@@ -262,7 +267,7 @@ class BackgroundProcessCommandsGenerator(CommandsGenerator, ABC):
 
     @override
     def generate(self) -> list[MadGraphCommand]:
-        commands = common_initial_commands(
+        commands = self._common_initial_commands(
             include_pythia8_particle_definitions=self.include_pythia8_particle_definitions
         )
 
@@ -275,7 +280,7 @@ class BackgroundProcessCommandsGenerator(CommandsGenerator, ABC):
 
         commands.append(LaunchCommand())
 
-        commands += common_generation_commands(
+        commands += self._common_generation_commands(
             self.output_path,
             self.suu_mass,
             seed=self.seed,
@@ -415,7 +420,7 @@ class WPlusJetsBackgroundGenerator(BackgroundProcessCommandsGenerator):
     @override
     def process_generation_commands(self) -> list[MadGraphCommand]:
         commands: list[MadGraphCommand] = [
-            CommentCommand("Generate w+ + jets background"),
+            CommentCommand("Generate W+ + jets background"),
             GenerateProcessCommand(
                 "p p > w+",
                 subprocess_label="@0",
