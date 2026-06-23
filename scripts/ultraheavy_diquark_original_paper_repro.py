@@ -157,7 +157,7 @@ def main(
         TTBarBackgroundGenerator(
             backgrounds_output_path / "ttbar",
             suu_mass,
-            max_extra_jets=3,
+            max_extra_jets=2,
             seed=seed,
             delphes_card_path=delphes_card,
             num_events=50_000 if small_sample else 500_000,
@@ -167,7 +167,7 @@ def main(
         WPlusJetsBackgroundGenerator(
             backgrounds_output_path / "w_plus_jets",
             suu_mass,
-            max_extra_jets=3,
+            max_extra_jets=2,
             seed=seed,
             delphes_card_path=delphes_card,
             num_events=50_000 if small_sample else 500_000,
@@ -177,7 +177,7 @@ def main(
         DibosonBackgroundGenerator(
             backgrounds_output_path / "diboson",
             suu_mass,
-            max_extra_jets=3,
+            max_extra_jets=2,
             seed=seed,
             delphes_card_path=delphes_card,
             num_events=50_000 if small_sample else 500_000,

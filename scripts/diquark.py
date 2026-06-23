@@ -36,7 +36,7 @@ class CommandsGenerator(ABC):
         commands += [
             CommentCommand("Configure parallelism"),
             SetCommand("run_mode", "2"),
-            SetCommand("nb_core", "120"),
+            SetCommand("nb_core", "64"),
         ]
 
         commands += [
@@ -384,7 +384,7 @@ class TTBarBackgroundGenerator(BackgroundProcessCommandsGenerator):
         commands: list[MadGraphCommand] = [
             CommentCommand("Generate t tbar background"),
             GenerateProcessCommand(
-                "p p > t t~",
+                "p p > t t~, (t > w+ b, w+ > j j), (t~ > w- b~, w- > j j)",
                 subprocess_label="@0" if self.max_extra_jets > 0 else None,
             ),
         ]

@@ -124,6 +124,21 @@ def main(
         # pyright: ignore[reportCallInDefaultInitializer]
         "simulations/diquark-many-jets"
     ),
+    small_sample: Annotated[
+        bool,
+        typer.Option(
+            "--small",
+            "--testing",
+            help="Whether to generate a small sample for testing",
+        ),
+    ] = False,
+    enable_pileup: Annotated[
+        bool,
+        typer.Option(
+            "--pileup/--no-pileup",
+            help="Whether to include pileup interactions in the generated samples",
+        ),
+    ] = False,
     seed: Annotated[int, typer.Option(help="Random seed for reproducibility")] = 42,
 ) -> None:
     output_directory = output_directory.resolve()
@@ -136,6 +151,12 @@ def main(
 
     signal_scripts_output_path = scripts_output_directory / "signal"
     signal_scripts_output_path.mkdir(parents=True, exist_ok=True)
+
+    delphes_card: Path | None = None
+    if enable_pileup:
+        delphes_card = Path(
+            "/data/gmajeri/diquark-simulations/pileup/delphes_card_ATLAS_PileUp.tcl"
+        )
 
     signals: dict[str, type[SignalProcessCommandsGenerator]] = {
         "Suu_chichi_htht_wwt_wwt": HTHT_WWTWWT_ProcessCommandsGenerator,
@@ -157,6 +178,8 @@ def main(
             output_path,
             suu_mass,
             seed=seed,
+            delphes_card_path=delphes_card,
+            num_events=50_000 if small_sample else 100_000,
         ).save_to_file(signal_scripts_output_path / f"{full_signal_name}.madgraph.txt")
 
     print("Generating MadGraph command scripts for background processes...")
@@ -171,8 +194,9 @@ def main(
         suu_mass,
         max_jets=4,
         seed=seed,
+        delphes_card_path=delphes_card,
         # Matching efficiency: ~25%
-        num_events=500_000,
+        num_events=150_000 if small_sample else 500_000,
     ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
 
     TTBarBackgroundGenerator(
@@ -180,8 +204,9 @@ def main(
         suu_mass,
         max_extra_jets=2,
         seed=seed,
+        delphes_card_path=delphes_card,
         # Matching efficiency: ~40%
-        num_events=300_000,
+        num_events=50_000 if small_sample else 300_000,
     ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
 
     WPlusJetsBackgroundGenerator(
@@ -189,8 +214,9 @@ def main(
         suu_mass,
         max_extra_jets=2,
         seed=seed,
+        delphes_card_path=delphes_card,
         # Matching efficiency: ~60%
-        num_events=200_000,
+        num_events=50_000 if small_sample else 200_000,
     ).save_to_file(background_scripts_output_path / "w+.madgraph.txt")
 
     DibosonBackgroundGenerator(
@@ -198,8 +224,9 @@ def main(
         suu_mass,
         max_extra_jets=2,
         seed=seed,
+        delphes_card_path=delphes_card,
         # Matching efficiency: ~75%
-        num_events=150_000,
+        num_events=50_000 if small_sample else 150_000,
     ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
 
 
