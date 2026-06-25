@@ -21,7 +21,6 @@ from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
     QCDBackgroundGenerator,
     TTBarBackgroundGenerator,
     DibosonBackgroundGenerator,
-    WPlusJetsBackgroundGenerator,
 )
 
 
@@ -133,6 +132,10 @@ def main(
         num_events=50_000 if small_sample else 100_000,
     ).save_to_file(signal_script_path)
 
+    generate_backgrounds = False
+    if not generate_backgrounds:
+        return
+
     print("Generating MadGraph command scripts for background processes...")
 
     background_scripts_output_path = scripts_output_directory / "background"
@@ -162,16 +165,6 @@ def main(
             delphes_card_path=delphes_card,
             num_events=50_000 if small_sample else 500_000,
         ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
-
-        print("Generating script for W+ + jets background...")
-        WPlusJetsBackgroundGenerator(
-            backgrounds_output_path / "w_plus_jets",
-            suu_mass,
-            max_extra_jets=2,
-            seed=seed,
-            delphes_card_path=delphes_card,
-            num_events=50_000 if small_sample else 500_000,
-        ).save_to_file(background_scripts_output_path / "w_plus_jets.madgraph.txt")
 
         print("Generating script for diboson pairs background...")
         DibosonBackgroundGenerator(

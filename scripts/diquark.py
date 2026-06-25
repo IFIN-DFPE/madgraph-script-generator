@@ -20,6 +20,15 @@ from madgraph_script_generator.commands import (
 )
 
 
+def vector_boson_multiparticle_definition_commands() -> list[MadGraphCommand]:
+    "Returns the commands for defining a new multiparticle `v`, representing a vector boson."
+
+    return [
+        CommentCommand("Define a new multiparticle for the two kinds of vector bosons"),
+        DefineCommand("v", "w+ w- z"),
+    ]
+
+
 class CommandsGenerator(ABC):
     @abstractmethod
     def generate(self) -> list[MadGraphCommand]: ...
@@ -36,13 +45,14 @@ class CommandsGenerator(ABC):
         commands += [
             CommentCommand("Configure parallelism"),
             SetCommand("run_mode", "2"),
-            SetCommand("nb_core", "64"),
+            SetCommand("nb_core", "100"),
         ]
 
-        commands += [
-            CommentCommand("Import the Standard Model"),
-            ImportModelCommand("sm"),
-        ]
+        if not isinstance(self, SignalProcessCommandsGenerator):
+            commands += [
+                CommentCommand("Import the full Standard Model"),
+                ImportModelCommand("sm-full"),
+            ]
 
         if include_pythia8_particle_definitions:
             commands += [
@@ -64,15 +74,12 @@ class CommandsGenerator(ABC):
                 "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
             ),
             SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
+            CommentCommand("Set the minimum sum of pTs of the jets."),
+            # TODO: find a formula to make this vary depending on the value of M_{S_{uu}}
+            SetCommand("htjmin", f"{suu_mass / 8 * 1000:.0f}"),
+            CommentCommand("Set the minimum pT of any jet."),
+            SetCommand("ptj", f"{suu_mass / 16 * 1000:.0f}"),
         ]
-
-        if isinstance(self, BackgroundProcessCommandsGenerator):
-            commands += [
-                CommentCommand(
-                    "Set the minimum sum of pTs of the jets, to focus on the harder part of the phase space."
-                ),
-                SetCommand("htjmin", f"{0.15 * suu_mass * 1000:.0f}"),
-            ]
 
         return commands
 
@@ -115,13 +122,12 @@ class CommandsGenerator(ABC):
             SetCommand("use_syst", "F"),
         ]
 
-        commands += [
-            CommentCommand("=== Jet matching and merging ==="),
-            CommentCommand("Enable MLM matching scheme"),
-            SetCommand("ickkw", "1"),
-            # CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
-            # SetCommand("xqcut", str(xqcut_value_gev)),
-        ]
+        # commands += [
+        #     CommentCommand("Disable jet matching"),
+        #     SetCommand("ickkw", "0"),
+        #     CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
+        #     SetCommand("xqcut", str(xqcut_value_gev)),
+        # ]
 
         commands += self._phase_space_cuts_commands(suu_mass)
 
@@ -339,6 +345,12 @@ class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
         num_events: int = 500_000,
     ) -> None:
         super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+
+        if max_jets > 4:
+            raise Exception(
+                "QCD with more than 4 jets is too expensive computationally"
+            )
+
         self.max_jets = max_jets
 
     @override
@@ -393,7 +405,7 @@ class TTBarBackgroundGenerator(BackgroundProcessCommandsGenerator):
             extra_jets = " ".join("j" * num_extra_jets)
             commands.append(
                 AddProcessCommand(
-                    f"p p > t t~ {extra_jets}",
+                    f"p p > t t~ {extra_jets}, (t > w+ b, w+ > j j), (t~ > w- b~, w- > j j)",
                     subprocess_label=f"@{num_extra_jets}",
                 )
             )
@@ -402,7 +414,166 @@ class TTBarBackgroundGenerator(BackgroundProcessCommandsGenerator):
 
 
 @final
-class WPlusJetsBackgroundGenerator(BackgroundProcessCommandsGenerator):
+class TTBarPlusHiggsBackgroundGenerator(BackgroundProcessCommandsGenerator):
+    max_extra_jets: int
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        max_extra_jets: int,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 300_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+        self.max_extra_jets = max_extra_jets
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        decays: list[str] = ["h > b b~", "h > v v, v > j j"]
+
+        commands: list[MadGraphCommand] = (
+            vector_boson_multiparticle_definition_commands()
+        )
+
+        commands += [
+            CommentCommand("Generate t tbar + Higgs background"),
+            CommentCommand(""),
+        ]
+
+        index = 0
+
+        for higgs_decay in decays:
+            commands.append(CommentCommand(f"Processes with {higgs_decay} decay"))
+
+            for num_extra_jets in range(0, self.max_extra_jets + 1):
+                if num_extra_jets > 0:
+                    extra_jets = " " + " ".join("j" * num_extra_jets)
+                else:
+                    extra_jets = ""
+
+                process = f"p p > t t~ h{extra_jets}, (t > w+ b, w+ > j j), (t~ > w- b~, w- > j j), ({higgs_decay})"
+                subprocess_label = f"@{index}"
+
+                if index == 0:
+                    commands.append(GenerateProcessCommand(process, subprocess_label))
+                else:
+                    commands.append(AddProcessCommand(process, subprocess_label))
+
+                index += 1
+
+        return commands
+
+
+@final
+class BBBarPlusHiggsBackgroundGenerator(BackgroundProcessCommandsGenerator):
+    max_extra_jets: int
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        max_extra_jets: int,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 300_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+        self.max_extra_jets = max_extra_jets
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        decays: list[str] = ["h > b b~", "h > v v, v > j j"]
+
+        commands: list[MadGraphCommand] = (
+            vector_boson_multiparticle_definition_commands()
+        )
+
+        commands += [
+            CommentCommand("Generate b bbar + Higgs background"),
+            CommentCommand(""),
+        ]
+
+        index = 0
+
+        for higgs_decay in decays:
+            commands.append(CommentCommand(f"Processes with {higgs_decay} decay"))
+
+            for num_extra_jets in range(0, self.max_extra_jets + 1):
+                if num_extra_jets > 0:
+                    extra_jets = " " + " ".join("j" * num_extra_jets)
+                else:
+                    extra_jets = ""
+
+                process = f"p p > b b~ h{extra_jets}, ({higgs_decay})"
+                subprocess_label = f"@{index}"
+
+                if index == 0:
+                    commands.append(GenerateProcessCommand(process, subprocess_label))
+                else:
+                    commands.append(AddProcessCommand(process, subprocess_label))
+
+                index += 1
+
+        return commands
+
+
+@final
+class HiggsBackgroundGenerator(BackgroundProcessCommandsGenerator):
+    max_extra_jets: int
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        max_extra_jets: int,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 100_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+        self.max_extra_jets = max_extra_jets
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        decays: list[str] = ["h > b b~", "h > v v, v > j j"]
+
+        commands: list[MadGraphCommand] = (
+            vector_boson_multiparticle_definition_commands()
+        )
+
+        commands += [
+            CommentCommand("Generate Higgs background"),
+            CommentCommand(""),
+        ]
+
+        index = 0
+
+        for higgs_decay in decays:
+            commands.append(CommentCommand(f"Processes with {higgs_decay} decay"))
+
+            for num_extra_jets in range(0, self.max_extra_jets + 1):
+                if num_extra_jets > 0:
+                    extra_jets = " " + " ".join("j" * num_extra_jets)
+                else:
+                    extra_jets = ""
+
+                process = f"p p > h{extra_jets}, ({higgs_decay})"
+                subprocess_label = f"@{index}"
+
+                if index == 0:
+                    commands.append(GenerateProcessCommand(process, subprocess_label))
+                else:
+                    commands.append(AddProcessCommand(process, subprocess_label))
+
+                index += 1
+
+        return commands
+
+
+@final
+class SingleBosonBackgroundGenerator(BackgroundProcessCommandsGenerator):
     max_extra_jets: int
 
     def __init__(
@@ -419,10 +590,12 @@ class WPlusJetsBackgroundGenerator(BackgroundProcessCommandsGenerator):
 
     @override
     def process_generation_commands(self) -> list[MadGraphCommand]:
-        commands: list[MadGraphCommand] = [
-            CommentCommand("Generate W+ + jets background"),
+        commands = vector_boson_multiparticle_definition_commands()
+
+        commands += [
+            CommentCommand("Generate v + jets background"),
             GenerateProcessCommand(
-                "p p > w+",
+                "p p > v, v > j j",
                 subprocess_label="@0",
             ),
         ]
@@ -431,10 +604,63 @@ class WPlusJetsBackgroundGenerator(BackgroundProcessCommandsGenerator):
             extra_jets = " ".join("j" * num_extra_jets)
             commands.append(
                 AddProcessCommand(
-                    f"p p > w+ {extra_jets}",
+                    f"p p > v {extra_jets}, v > j j",
                     subprocess_label=f"@{num_extra_jets}",
                 )
             )
+
+        return commands
+
+
+@final
+class SingleBosonPlusHiggsBackgroundGenerator(BackgroundProcessCommandsGenerator):
+    max_extra_jets: int
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        max_extra_jets: int,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 100_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+        self.max_extra_jets = max_extra_jets
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        decays: list[str] = ["h > b b~", "h > v v, v > j j"]
+
+        commands: list[MadGraphCommand] = (
+            vector_boson_multiparticle_definition_commands()
+        )
+
+        commands += [
+            CommentCommand("Generate Higgs + single boson background"),
+            CommentCommand(""),
+        ]
+
+        index = 0
+
+        for higgs_decay in decays:
+            commands.append(CommentCommand(f"Processes with {higgs_decay} decay"))
+
+            for num_extra_jets in range(0, self.max_extra_jets + 1):
+                if num_extra_jets > 0:
+                    extra_jets = " " + " ".join("j" * num_extra_jets)
+                else:
+                    extra_jets = ""
+
+                process = f"p p > v h{extra_jets}, ({higgs_decay})"
+                subprocess_label = f"@{index}"
+
+                if index == 0:
+                    commands.append(GenerateProcessCommand(process, subprocess_label))
+                else:
+                    commands.append(AddProcessCommand(process, subprocess_label))
+
+                index += 1
 
         return commands
 
@@ -457,17 +683,12 @@ class DibosonBackgroundGenerator(BackgroundProcessCommandsGenerator):
 
     @override
     def process_generation_commands(self) -> list[MadGraphCommand]:
-        commands: list[MadGraphCommand] = [
-            CommentCommand(
-                "Define a new multiparticle for the two kinds of vector bosons"
-            ),
-            DefineCommand("v", "w+ w- z"),
-        ]
+        commands = vector_boson_multiparticle_definition_commands()
 
         commands += [
             CommentCommand("Generate dibosons background"),
             GenerateProcessCommand(
-                "p p > v v",
+                "p p > v v, v > j j",
                 subprocess_label="@0",
             ),
         ]
@@ -476,7 +697,7 @@ class DibosonBackgroundGenerator(BackgroundProcessCommandsGenerator):
             extra_jets = " ".join("j" * num_extra_jets)
             commands.append(
                 AddProcessCommand(
-                    f"p p > v v {extra_jets}",
+                    f"p p > v v {extra_jets}, v > j j",
                     subprocess_label=f"@{num_extra_jets}",
                 )
             )
