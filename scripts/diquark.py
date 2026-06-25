@@ -75,10 +75,9 @@ class CommandsGenerator(ABC):
             ),
             SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
             CommentCommand("Set the minimum sum of pTs of the jets."),
-            # TODO: find a formula to make this vary depending on the value of M_{S_{uu}}
-            SetCommand("htjmin", f"{suu_mass / 8 * 1000:.0f}"),
-            CommentCommand("Set the minimum pT of any jet."),
-            SetCommand("ptj", f"{suu_mass / 16 * 1000:.0f}"),
+            SetCommand("htjmin", f"{suu_mass / 4 * 1000:.0f}"),
+            # CommentCommand("Set the minimum pT of any jet."),
+            # SetCommand("ptj", f"{suu_mass / 16 * 1000:.0f}"),
         ]
 
         return commands
@@ -652,7 +651,7 @@ class SingleBosonPlusHiggsBackgroundGenerator(BackgroundProcessCommandsGenerator
                 else:
                     extra_jets = ""
 
-                process = f"p p > v h{extra_jets}, ({higgs_decay})"
+                process = f"p p > v h{extra_jets}, (v > j j), ({higgs_decay})"
                 subprocess_label = f"@{index}"
 
                 if index == 0:

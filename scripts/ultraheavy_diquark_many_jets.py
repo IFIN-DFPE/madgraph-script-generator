@@ -19,7 +19,7 @@ from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
     HiggsBackgroundGenerator,
     SignalProcessCommandsGenerator,
     QCDBackgroundGenerator,
-    SingleBosonPlusHiggsBackgroundGenerator,
+    # SingleBosonPlusHiggsBackgroundGenerator,
     TTBarBackgroundGenerator,
     TTBarPlusHiggsBackgroundGenerator,
     DibosonBackgroundGenerator,
@@ -33,7 +33,7 @@ class HTHT_WWTWWT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > h t, (h > w+ w- > j j j j), (t > w+ b, w+ > j j)), (chi > h t, (h > w+ w- > j j j j), (t > w+ b, w+ > j j)))"
+                "p p > suu, (suu > chi chi, (chi > h t, (h > w+ w-, w+ > j j, w- > j j), (t > w+ b, w+ > j j)), (chi > h t, (h > w+ w-, w+ > j j, w- > j j), (t > w+ b, w+ > j j)))"
             )
         ]
 
@@ -66,7 +66,7 @@ class WBHT_JJBWWT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > h t, (h > w+ w- > j j j j), (t > w+ b, w+ > j j)))"
+                "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > h t, (h > w+ w-, w+ > j j, w- > j j), (t > w+ b, w+ > j j)))"
             )
         ]
 
@@ -88,7 +88,7 @@ class ZTZT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > z t), (chi > z t))"
+                "p p > suu, (suu > chi chi, (chi > z t, (z > j j), (t > w+ b, w+ > j j)), (chi > z t, (z > j j), (t > w+ b, w+ > j j))) "
             )
         ]
 
@@ -99,7 +99,7 @@ class ZTHT_JJTWWT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > z t, z > j j), (chi > h t, (h > w+ w- > j j j j), (t > w+ b, w+ > j j)))"
+                "p p > suu, (suu > chi chi, (chi > z t, z > j j, (t > w+ b, w+ > j j)), (chi > h t, (h > w+ w-, w+ > j j, w- > j j), (t > w+ b, w+ > j j)))"
             )
         ]
 
@@ -110,7 +110,7 @@ class ZTHT_JJTBBT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > z t, z > j j), (chi > h t, (h > b b~), (t > w+ b, w+ > j j)))"
+                "p p > suu, (suu > chi chi, (chi > z t, (z > j j), (t > w+ b, w+ > j j)), (chi > h t, (h > b b~), (t > w+ b, w+ > j j)))"
             )
         ]
 
@@ -214,7 +214,7 @@ def main(
     TTBarPlusHiggsBackgroundGenerator(
         backgrounds_output_path / "ttbar_higgs",
         suu_mass,
-        max_extra_jets=2,
+        max_extra_jets=0,
         seed=seed,
         delphes_card_path=delphes_card,
         num_events=50_000 if small_sample else 100_000,
@@ -223,7 +223,7 @@ def main(
     BBBarPlusHiggsBackgroundGenerator(
         backgrounds_output_path / "bbbar_higgs",
         suu_mass,
-        max_extra_jets=2,
+        max_extra_jets=0,
         seed=seed,
         delphes_card_path=delphes_card,
         num_events=50_000 if small_sample else 100_000,
@@ -232,7 +232,7 @@ def main(
     HiggsBackgroundGenerator(
         backgrounds_output_path / "higgs",
         suu_mass,
-        max_extra_jets=2,
+        max_extra_jets=0,
         seed=seed,
         delphes_card_path=delphes_card,
         num_events=50_000 if small_sample else 100_000,
@@ -247,19 +247,19 @@ def main(
         num_events=50_000 if small_sample else 150_000,
     ).save_to_file(background_scripts_output_path / "single_boson.madgraph.txt")
 
-    SingleBosonPlusHiggsBackgroundGenerator(
-        backgrounds_output_path / "single_boson_higgs",
-        suu_mass,
-        max_extra_jets=2,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
-    ).save_to_file(background_scripts_output_path / "single_boson_higgs.madgraph.txt")
+    # SingleBosonPlusHiggsBackgroundGenerator(
+    #     backgrounds_output_path / "single_boson_higgs",
+    #     suu_mass,
+    #     max_extra_jets=2,
+    #     seed=seed,
+    #     delphes_card_path=delphes_card,
+    #     num_events=50_000 if small_sample else 100_000,
+    # ).save_to_file(background_scripts_output_path / "single_boson_higgs.madgraph.txt")
 
     DibosonBackgroundGenerator(
         backgrounds_output_path / "diboson",
         suu_mass,
-        max_extra_jets=2,
+        max_extra_jets=1,
         seed=seed,
         delphes_card_path=delphes_card,
         num_events=50_000 if small_sample else 150_000,
