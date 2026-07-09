@@ -129,10 +129,10 @@ def main(
         suu_mass,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
+        num_events=50_000 if small_sample else 1_000_000,
     ).save_to_file(signal_script_path)
 
-    generate_backgrounds = False
+    generate_backgrounds: bool = True
     if not generate_backgrounds:
         return
 

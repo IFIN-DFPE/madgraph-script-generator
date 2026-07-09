@@ -231,9 +231,9 @@ class SignalProcessCommandsGenerator(CommandsGenerator, ABC):
 
         commands += [
             CommentCommand(
-                "Recompute the widths for t/t~, h0, S_{uu} and \\chi, since the original model uses some hardcoded values which are not appropriate for our energy scale."
+                "Recompute the widths for S_{uu} and \\chi, since the original model uses some hardcoded values which are not appropriate for our energy scale."
             ),
-            ComputeWidthsCommand([6, 25, 9936661, 9936662]),
+            ComputeWidthsCommand([9936661, 9936662]),
         ]
 
         commands.append(DoneCommand())

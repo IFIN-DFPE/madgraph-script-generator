@@ -183,7 +183,7 @@ def main(
             suu_mass,
             seed=seed,
             delphes_card_path=delphes_card,
-            num_events=50_000 if small_sample else 100_000,
+            num_events=50_000 if small_sample else 1_000_000,
         ).save_to_file(signal_scripts_output_path / f"{full_signal_name}.madgraph.txt")
 
     print("Generating MadGraph command scripts for background processes...")
