@@ -172,15 +172,29 @@ class LaunchCommand(MadGraphCommand):
     Configured tools and run/param cards can be customized before the run actually starts.
     """
 
+    directory: Path | str | None
+    "Path or name of directory from which to launch/create a run."
+
     run_name: str | None
     "Name of the run to launch."
 
-    def __init__(self, run_name: str | None = None) -> None:
+    def __init__(
+        self, directory: Path | str | None = None, run_name: str | None = None
+    ) -> None:
+        self.directory = directory
         self.run_name = run_name
 
     @override
     def to_command_str(self) -> str:
-        return f"launch {self.run_name or ''}".strip()
+        launch_command = "launch"
+
+        if self.directory:
+            launch_command += f" {str(self.directory)}"
+
+        if self.run_name:
+            launch_command += f" -n {self.run_name}"
+
+        return launch_command.strip()
 
 
 @final
