@@ -157,7 +157,7 @@ class WBHT_ProcessCommandsGenerator(SignalMassScanProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > h t, (h > w+ w-, w+ > j j, w- > j j), (t > w+ b, w+ > j j)))"
+                "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > h t, (h > b b~), (t > w+ b, w+ > j j)))"
             )
         ]
 
@@ -181,6 +181,8 @@ def main(
 
     print("Generating MadGraph command script for signal process...")
 
+    suu_masses: list[float] = [6.5, 6.75, 7.0, 7.25, 7.5, 8, 8.25, 8.5]
+
     print("Generating script for S_{uu} -> \\chi \\chi -> Wb Wb process...")
 
     signal_name = "Suu_chichi_WbWb"
@@ -188,14 +190,14 @@ def main(
     wb_wb_signal_script_path = scripts_output_directory / f"{signal_name}.madgraph.txt"
     wb_wb_signal_script_path.parent.mkdir(parents=True, exist_ok=True)
 
-    suu_masses: list[float] = [6.5, 6.75, 7.0, 7.25, 7.5, 8, 8.25, 8.5]
-
     WBWB_ProcessCommandsGenerator(
         diquark_model_path,
         madgraph_output_directory / signal_name,
         suu_masses,
         seed=seed,
     ).save_to_file(wb_wb_signal_script_path)
+
+    print("Generating script for S_{uu} -> \\chi \\chi -> Wb ht process...")
 
     signal_name = "Suu_chichi_Wbht"
 
