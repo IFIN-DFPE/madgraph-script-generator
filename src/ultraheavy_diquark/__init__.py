@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from pathlib import Path
 from typing import final, override
 
@@ -27,6 +28,26 @@ def vector_boson_multiparticle_definition_commands() -> list[MadGraphCommand]:
         CommentCommand("Define a new multiparticle for the two kinds of vector bosons"),
         DefineCommand("v", "w+ w- z"),
     ]
+
+
+class PartonDistributionFunction:
+    "Represents a parton distribution function (PDF) set, accessible through LHAPDF."
+
+    name: str
+    "Human-readable name of this PDF."
+
+    alpha_strong: Decimal
+    "Value of the strong coupling constant (\\alpha_{strong})."
+
+    lhapdf_index: str
+    "Index of this PDF set in the LHAPDF repository"
+
+    def __init__(
+        self, name: str, alpha_strong: float | str | Decimal, lhapdf_index: str
+    ) -> None:
+        self.name = name
+        self.alpha_strong = Decimal(alpha_strong)
+        self.lhapdf_index = lhapdf_index
 
 
 class CommandsGenerator(ABC):

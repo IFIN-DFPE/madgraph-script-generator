@@ -3,7 +3,6 @@
 """
 
 from pathlib import Path
-import sys
 from typing import Annotated, final, override
 
 import typer
@@ -13,8 +12,7 @@ from madgraph_script_generator.commands import (
     MadGraphCommand,
 )
 
-sys.path.append(str(Path(__file__).parent))
-from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
+from ultraheavy_diquark import (
     BBBarPlusHiggsBackgroundGenerator,
     HiggsBackgroundGenerator,
     SignalProcessCommandsGenerator,

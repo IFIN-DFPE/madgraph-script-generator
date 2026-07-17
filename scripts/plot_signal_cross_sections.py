@@ -52,7 +52,6 @@ def main() -> None:
     hr.SetTitle("S_{uu} decay channels cross sections")
     hr.SetXTitle("S_{uu} mass (TeV)")
     hr.SetYTitle("Cross section (fb)")
-    canvas.GetFrame().SetBorderSize(12)
 
     wb_wb_file_path: Path = args.Wb_Wb_cross_sections_csv_path
     wb_ht_file_path: Path = args.Wb_ht_cross_sections_csv_path

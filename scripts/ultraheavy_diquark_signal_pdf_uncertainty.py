@@ -18,32 +18,47 @@ from madgraph_script_generator.commands import (
 )
 
 from ultraheavy_diquark import (
+    PartonDistributionFunction,
     SignalProcessCommandsGenerator,
+)
+from ultraheavy_diquark.pdfs import (
+    PDF_MSHT20_LO_AS_130,
+    PDF_MSHT20_NNLO_AS_118,
+    PDF_NNPDF23_LO_AS_0119_QED,
+    PDF_NNPDF23_LO_AS_0130_QED,
+    PDF_NNPDF23_NNLO_AS_0118,
+    PDF_NNPDF30_LO_AS_0118,
+    PDF_NNPDF31_LO_AS_0118,
+    PDF_NNPDF31_LO_AS_0130,
+    PDF_NNPDF40_LO_AS_01180,
+    PDF_NNPDF40_NNLO_AS_01180,
 )
 
 
-class SignalMassScanProcessCommandsGenerator(SignalProcessCommandsGenerator, ABC):
-    "Base class for generating scripts which perform S_{uu} mass scans."
+class SignalPDFUncertaintyBenchmarkCommandsGenerator(
+    SignalProcessCommandsGenerator, ABC
+):
+    "Base class for scripts which measure uncertainty across multiple PDFs."
 
-    suu_masses: list[float]
+    pdfs: list[PartonDistributionFunction]
 
     def __init__(
         self,
         diquark_model_path: Path,
         output_path: Path,
-        suu_masses: list[float],
+        suu_mass: float,
+        pdfs: list[PartonDistributionFunction],
         seed: int | None = None,
     ) -> None:
         super().__init__(
             diquark_model_path,
             output_path,
-            suu_mass=0,
+            suu_mass=suu_mass,
             seed=seed,
             delphes_card_path=None,
             num_events=0,
         )
-        self.suu_masses = suu_masses
-        del self.suu_mass
+        self.pdfs = pdfs
 
     @override
     def generate(self) -> list[MadGraphCommand]:
@@ -61,15 +76,15 @@ class SignalMassScanProcessCommandsGenerator(SignalProcessCommandsGenerator, ABC
             OutputCommand(self.output_path),
         ]
 
-        for run_index, suu_mass in enumerate(self.suu_masses):
-            assert 6 <= suu_mass <= 10
-
+        for run_index, pdf_set in enumerate(self.pdfs):
             commands += [
                 CommentCommand(""),
-                CommentCommand(f"===== Suu mass point: {suu_mass:.4g} TeV ====="),
+                CommentCommand(
+                    f"===== Parton Distribution Function (PDF): {pdf_set.name} ====="
+                ),
                 CommentCommand(""),
                 LaunchCommand(
-                    directory=self.output_path, run_name=f"MSuu_{suu_mass:.4g}_TeV"
+                    directory=self.output_path, run_name=f"pdf_{pdf_set.lhapdf_index}"
                 ),
             ]
 
@@ -85,8 +100,6 @@ class SignalMassScanProcessCommandsGenerator(SignalProcessCommandsGenerator, ABC
                 commands += [
                     CommentCommand("Use LHAPDF"),
                     SetCommand("pdlabel", "lhapdf"),
-                    CommentCommand("NNPDF4.0 LO PDF set, with alpha_s = 0.118"),
-                    SetCommand("lhaid", "331900"),
                 ]
 
                 commands += [
@@ -96,8 +109,8 @@ class SignalMassScanProcessCommandsGenerator(SignalProcessCommandsGenerator, ABC
                 ]
 
                 commands += [
-                    CommentCommand("Disable systematic uncertainty calculation"),
-                    SetCommand("use_syst", "F"),
+                    CommentCommand("Enable systematic uncertainty calculation"),
+                    SetCommand("use_syst", "T"),
                 ]
 
                 commands += [
@@ -119,18 +132,23 @@ class SignalMassScanProcessCommandsGenerator(SignalProcessCommandsGenerator, ABC
                     SetCommand("cut_decays", "F"),
                 ]
 
-            commands += self._phase_space_cuts_commands(suu_mass)
+                commands += self._phase_space_cuts_commands(self.suu_mass)
+
+                commands += [
+                    CommentCommand(f"Mass of S_{{uu}} = {self.suu_mass:.4g} TeV"),
+                    SetCommand("MSuu", f"{self.suu_mass * 1000:.2f}"),
+                ]
+
+                commands += [
+                    CommentCommand(
+                        "Recompute the widths for S_{uu} and \\chi, since the original model uses some hardcoded values which are not appropriate for our energy scale."
+                    ),
+                    ComputeWidthsCommand([9936661, 9936662]),
+                ]
 
             commands += [
-                CommentCommand(f"Mass of S_{{uu}} = {suu_mass:.4g} TeV"),
-                SetCommand("MSuu", f"{suu_mass * 1000:.2f}"),
-            ]
-
-            commands += [
-                CommentCommand(
-                    "Recompute the widths for S_{uu} and \\chi, since the original model uses some hardcoded values which are not appropriate for our energy scale."
-                ),
-                ComputeWidthsCommand([9936661, 9936662]),
+                CommentCommand(pdf_set.name),
+                SetCommand("lhaid", pdf_set.lhapdf_index),
             ]
 
         commands.append(DoneCommand())
@@ -139,18 +157,7 @@ class SignalMassScanProcessCommandsGenerator(SignalProcessCommandsGenerator, ABC
 
 
 @final
-class WBWB_ProcessCommandsGenerator(SignalMassScanProcessCommandsGenerator):
-    @override
-    def process_generation_commands(self) -> list[MadGraphCommand]:
-        return [
-            GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > w+ b, w+ > j j))"
-            )
-        ]
-
-
-@final
-class WBHT_ProcessCommandsGenerator(SignalMassScanProcessCommandsGenerator):
+class WBHT_ProcessCommandsGenerator(SignalPDFUncertaintyBenchmarkCommandsGenerator):
     @override
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
@@ -166,9 +173,12 @@ def main(
         __file__
     ).parent
     / "diquarkVquark2023_UFO",
+    suu_mass: Annotated[
+        float, typer.Option(help="Mass of the S_{uu} diquark scalar in TeV")
+    ] = 8.0,
     output_directory: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
-        "simulations/diquark-signal-cross-section-scan"
+        "simulations/diquark-pdf-uncertainty"
     ),
     seed: Annotated[int, typer.Option(help="Random seed for reproducibility")] = 42,
 ) -> None:
@@ -177,34 +187,31 @@ def main(
     scripts_output_directory = output_directory / "scripts"
     madgraph_output_directory = output_directory / "data"
 
-    print("Generating MadGraph command script for signal process...")
-
-    suu_masses: list[float] = [6.5, 6.75, 7.0, 7.25, 7.5, 8, 8.25, 8.5]
-
-    print("Generating script for S_{uu} -> \\chi \\chi -> Wb Wb process...")
-
-    signal_name = "Suu_chichi_WbWb"
-
-    wb_wb_signal_script_path = scripts_output_directory / f"{signal_name}.madgraph.txt"
-    wb_wb_signal_script_path.parent.mkdir(parents=True, exist_ok=True)
-
-    WBWB_ProcessCommandsGenerator(
-        diquark_model_path,
-        madgraph_output_directory / signal_name,
-        suu_masses,
-        seed=seed,
-    ).save_to_file(wb_wb_signal_script_path)
+    pdfs_list: list[PartonDistributionFunction] = [
+        PDF_NNPDF23_LO_AS_0130_QED,
+        PDF_NNPDF23_LO_AS_0119_QED,
+        PDF_NNPDF23_NNLO_AS_0118,
+        PDF_NNPDF30_LO_AS_0118,
+        PDF_NNPDF31_LO_AS_0130,
+        PDF_NNPDF31_LO_AS_0118,
+        PDF_NNPDF40_LO_AS_01180,
+        PDF_NNPDF40_NNLO_AS_01180,
+        PDF_MSHT20_LO_AS_130,
+        PDF_MSHT20_NNLO_AS_118,
+    ]
 
     print("Generating script for S_{uu} -> \\chi \\chi -> Wb ht process...")
 
     signal_name = "Suu_chichi_Wbht"
 
     wb_ht_signal_script_path = scripts_output_directory / f"{signal_name}.madgraph.txt"
+    wb_ht_signal_script_path.parent.mkdir(parents=True, exist_ok=True)
 
     WBHT_ProcessCommandsGenerator(
         diquark_model_path,
         madgraph_output_directory / signal_name,
-        suu_masses,
+        suu_mass,
+        pdfs_list,
         seed=seed,
     ).save_to_file(wb_ht_signal_script_path)
 

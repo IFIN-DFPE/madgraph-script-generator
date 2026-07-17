@@ -4,7 +4,6 @@ to reproduce the main results of the paper https://arxiv.org/abs/2503.17031.
 
 from enum import Enum
 from pathlib import Path
-import sys
 from typing import Annotated, final, override
 
 import typer
@@ -14,8 +13,7 @@ from madgraph_script_generator.commands import (
     MadGraphCommand,
 )
 
-sys.path.append(str(Path(__file__).parent))
-from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
+from ultraheavy_diquark import (
     Pythia8BackgroundProcessGenerator,
     SignalProcessCommandsGenerator,
     QCDBackgroundGenerator,
@@ -94,6 +92,13 @@ def main(
             help="Whether to include pileup interactions in the generated samples",
         ),
     ] = False,
+    generate_background: Annotated[
+        bool,
+        typer.Option(
+            "--with-background/--no-background",
+            help="Whether to also generate scripts for the background processes.",
+        ),
+    ] = False,
     background_generation_strategy: Annotated[
         BackgroundGenerationStrategy,
         typer.Option(help="Strategy for generating background processes"),
@@ -132,8 +137,7 @@ def main(
         num_events=50_000 if small_sample else 1_000_000,
     ).save_to_file(signal_script_path)
 
-    generate_backgrounds: bool = True
-    if not generate_backgrounds:
+    if not generate_background:
         return
 
     print("Generating MadGraph command scripts for background processes...")

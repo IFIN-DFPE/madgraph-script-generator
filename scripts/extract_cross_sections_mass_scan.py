@@ -6,20 +6,12 @@ from typing import Annotated, final
 
 import typer
 
-# Pattern for matching real numbers writing using scientific/exponential (E) notation.
-# Taken from https://stackoverflow.com/a/658662/5723188
-number_in_scientific_notation_pattern = r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+\-]?\d+)?"
-
-# Regular expression for matching run summaries
-# (with capture groups for run names, tags and cross-sections)
-results_summary_pattern = re.compile(
-    rf"""=== Results Summary for run: ((?:\w|\.)+) tag: ((?:\w|\.)+) ===
-\s*Cross-section : \s*({number_in_scientific_notation_pattern})\s*\+-\s* ({number_in_scientific_notation_pattern}) pb
-\s*Nb of events :  (\d+)""",
-    re.MULTILINE,
+from madgraph_script_generator.madgraph_logs import (
+    MADGRAPH_RESULTS_SUMMARY_PATTERN,
+    NUMBER_IN_SCIENTIFIC_NOTATION_PATTERN,
 )
 
-run_name_pattern = re.compile(rf"MSuu_({number_in_scientific_notation_pattern})_TeV")
+RUN_NAME_PATTERN = re.compile(rf"MSuu_({NUMBER_IN_SCIENTIFIC_NOTATION_PATTERN})_TeV")
 
 
 @dataclass
@@ -48,7 +40,7 @@ def main(
     seen = set[tuple[str, str]]()
     results = list[RunInformation]()
 
-    matches: list[re.Match[str]] = results_summary_pattern.findall(contents)
+    matches: list[re.Match[str]] = MADGRAPH_RESULTS_SUMMARY_PATTERN.findall(contents)
     for match in matches:
         (
             run_name,
@@ -68,7 +60,7 @@ def main(
         cross_section_pb = float(cross_section_pb)
         cross_section_stddev_pb = float(cross_section_stddev_pb)
 
-        run_name_match = run_name_pattern.match(run_name)
+        run_name_match = RUN_NAME_PATTERN.match(run_name)
         assert run_name_match is not None, "Run name doesn't match expected pattern"
 
         suu_mass = float(run_name_match[1])
