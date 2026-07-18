@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 import re
-import sys
 from typing import Annotated, final
 
 import typer
@@ -13,8 +12,8 @@ from madgraph_script_generator.madgraph_logs import (
     NUMBER_IN_SCIENTIFIC_NOTATION_PATTERN,
 )
 
-sys.path.append(str(Path(__file__).parent))
-from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
+from ultraheavy_diquark import PartonDistributionFunction
+from ultraheavy_diquark.pdfs import (
     PDF_MSHT20_LO_AS_130,
     PDF_MSHT20_NNLO_AS_118,
     PDF_NNPDF23_LO_AS_0119_QED,
@@ -25,7 +24,6 @@ from diquark import (  # pyright: ignore[reportImplicitRelativeImport]
     PDF_NNPDF31_LO_AS_0130,
     PDF_NNPDF40_LO_AS_01180,
     PDF_NNPDF40_NNLO_AS_01180,
-    PartonDistributionFunction,
 )
 
 RUN_NAME_PATTERN = re.compile(r"pdf_(\d+)")

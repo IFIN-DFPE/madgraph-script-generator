@@ -18,6 +18,7 @@ from madgraph_script_generator.commands import (
 )
 
 from ultraheavy_diquark import (
+    BackgroundProcessCommandsGenerator,
     PartonDistributionFunction,
     SignalProcessCommandsGenerator,
 )
@@ -38,7 +39,7 @@ from ultraheavy_diquark.pdfs import (
 class SignalPDFUncertaintyBenchmarkCommandsGenerator(
     SignalProcessCommandsGenerator, ABC
 ):
-    "Base class for scripts which measure uncertainty across multiple PDFs."
+    "Base class for scripts which measure signal cross section uncertainty across multiple PDFs."
 
     pdfs: list[PartonDistributionFunction]
 
@@ -167,6 +168,113 @@ class WBHT_ProcessCommandsGenerator(SignalPDFUncertaintyBenchmarkCommandsGenerat
         ]
 
 
+class BackgroundPDFUncertaintyBenchmarkCommandsGenerator(
+    BackgroundProcessCommandsGenerator, ABC
+):
+    "Base class for scripts which measure background cross-secgion uncertainty across multiple PDFs."
+
+    pdfs: list[PartonDistributionFunction]
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        pdfs: list[PartonDistributionFunction],
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            output_path,
+            suu_mass=suu_mass,
+            seed=seed,
+            delphes_card_path=None,
+            num_events=1000,
+        )
+        self.pdfs = pdfs
+
+    @override
+    def generate(self) -> list[MadGraphCommand]:
+        commands = self._common_initial_commands()
+
+        commands += self.process_generation_commands()
+
+        commands += [
+            CommentCommand("Configure output directory"),
+            OutputCommand(self.output_path),
+        ]
+
+        for run_index, pdf_set in enumerate(self.pdfs):
+            commands += [
+                CommentCommand(""),
+                CommentCommand(
+                    f"===== Parton Distribution Function (PDF): {pdf_set.name} ====="
+                ),
+                CommentCommand(""),
+                LaunchCommand(
+                    directory=self.output_path, run_name=f"pdf_{pdf_set.lhapdf_index}"
+                ),
+            ]
+
+            # Common settings only need to be set/defined once
+            if run_index == 0:
+                commands += [
+                    SetExternalToolsCommand(
+                        analysis="MadAnalysis5", shower="Pythia8", detector="OFF"
+                    ),
+                    DoneCommand(),
+                ]
+
+                commands += [
+                    CommentCommand("Use LHAPDF"),
+                    SetCommand("pdlabel", "lhapdf"),
+                ]
+
+                commands += [
+                    CommentCommand("Set the collider energy, sqrt(s) = 13.6 TeV"),
+                    SetCommand("ebeam1", "6800"),
+                    SetCommand("ebeam2", "6800"),
+                ]
+
+                commands += [
+                    CommentCommand("Enable systematic uncertainty calculation"),
+                    SetCommand("use_syst", "T"),
+                ]
+
+                commands += [
+                    CommentCommand("Fix the seed for reproducibility"),
+                    SetCommand("iseed", str(self.seed), card="run_card"),
+                ]
+
+                commands += [
+                    CommentCommand(
+                        "Generate a small number of events, since we only care about cross-sections"
+                    ),
+                    SetCommand("nevents", "1000"),
+                ]
+
+                commands += self._phase_space_cuts_commands(self.suu_mass)
+
+            commands += [
+                CommentCommand(pdf_set.name),
+                SetCommand("lhaid", pdf_set.lhapdf_index),
+            ]
+
+        commands.append(DoneCommand())
+
+        return commands
+
+
+@final
+class QCDBackgroundPDFUncertaintyBenchmarkCommandsGenerator(
+    BackgroundPDFUncertaintyBenchmarkCommandsGenerator
+):
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        return [
+            CommentCommand("Generate QCD 2->2 background"),
+            GenerateProcessCommand("p p > j j"),
+        ]
+
+
 def main(
     diquark_model_path: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
@@ -212,8 +320,24 @@ def main(
         madgraph_output_directory / signal_name,
         suu_mass,
         pdfs_list,
-        seed=seed,
+        seed,
     ).save_to_file(wb_ht_signal_script_path)
+
+    print("Generating script for QCD 2 -> 2 background process...")
+
+    background_name = "qcd_2_to_2"
+
+    background_script_path = (
+        scripts_output_directory / f"{background_name}.madgraph.txt"
+    )
+    background_script_path.parent.mkdir(parents=True, exist_ok=True)
+
+    QCDBackgroundPDFUncertaintyBenchmarkCommandsGenerator(
+        madgraph_output_directory / background_name,
+        suu_mass,
+        pdfs_list,
+        seed,
+    ).save_to_file(background_script_path)
 
 
 if __name__ == "__main__":
