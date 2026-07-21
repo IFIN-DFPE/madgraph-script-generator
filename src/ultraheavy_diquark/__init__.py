@@ -115,7 +115,7 @@ class CommandsGenerator(ABC):
 
         commands += [
             SetExternalToolsCommand(
-                analysis="MadAnalysis5", shower="Pythia8", detector="Delphes"
+                analysis="OFF", shower="Pythia8", detector="Delphes"
             ),
             DoneCommand(),
         ]
@@ -123,6 +123,8 @@ class CommandsGenerator(ABC):
         commands += [
             CommentCommand("Use LHAPDF"),
             SetCommand("pdlabel", "lhapdf"),
+            # CommentCommand("MSHT 2020 LO PDF set, alpha_s = 0.130"),
+            # SetCommand("lhaid", "27000"),
             CommentCommand("NNPDF4.0 LO PDF set, with alpha_s = 0.118"),
             SetCommand("lhaid", "331900"),
             # CommentCommand("NNPDF 2.3 QCD + QED LO PDF set, with alpha_s = 0.130"),

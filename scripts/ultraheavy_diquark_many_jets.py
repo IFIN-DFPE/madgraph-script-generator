@@ -13,13 +13,9 @@ from madgraph_script_generator.commands import (
 )
 
 from ultraheavy_diquark import (
-    BBBarPlusHiggsBackgroundGenerator,
-    HiggsBackgroundGenerator,
     SignalProcessCommandsGenerator,
     QCDBackgroundGenerator,
-    # SingleBosonPlusHiggsBackgroundGenerator,
     TTBarBackgroundGenerator,
-    TTBarPlusHiggsBackgroundGenerator,
     DibosonBackgroundGenerator,
     SingleBosonBackgroundGenerator,
 )
@@ -197,7 +193,7 @@ def main(
         max_jets=4,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=150_000 if small_sample else 500_000,
+        num_events=150_000 if small_sample else 1_000_000,
     ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
 
     TTBarBackgroundGenerator(
@@ -206,35 +202,8 @@ def main(
         max_extra_jets=2,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 300_000,
+        num_events=50_000 if small_sample else 600_000,
     ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
-
-    TTBarPlusHiggsBackgroundGenerator(
-        backgrounds_output_path / "ttbar_higgs",
-        suu_mass,
-        max_extra_jets=0,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
-    ).save_to_file(background_scripts_output_path / "ttbar_higgs.madgraph.txt")
-
-    BBBarPlusHiggsBackgroundGenerator(
-        backgrounds_output_path / "bbbar_higgs",
-        suu_mass,
-        max_extra_jets=0,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
-    ).save_to_file(background_scripts_output_path / "bbbar_higgs.madgraph.txt")
-
-    HiggsBackgroundGenerator(
-        backgrounds_output_path / "higgs",
-        suu_mass,
-        max_extra_jets=0,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
-    ).save_to_file(background_scripts_output_path / "higgs.madgraph.txt")
 
     SingleBosonBackgroundGenerator(
         backgrounds_output_path / "single_boson",
@@ -245,22 +214,13 @@ def main(
         num_events=50_000 if small_sample else 150_000,
     ).save_to_file(background_scripts_output_path / "single_boson.madgraph.txt")
 
-    # SingleBosonPlusHiggsBackgroundGenerator(
-    #     backgrounds_output_path / "single_boson_higgs",
-    #     suu_mass,
-    #     max_extra_jets=2,
-    #     seed=seed,
-    #     delphes_card_path=delphes_card,
-    #     num_events=50_000 if small_sample else 100_000,
-    # ).save_to_file(background_scripts_output_path / "single_boson_higgs.madgraph.txt")
-
     DibosonBackgroundGenerator(
         backgrounds_output_path / "diboson",
         suu_mass,
         max_extra_jets=1,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 150_000,
+        num_events=50_000 if small_sample else 300_000,
     ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
 
 
