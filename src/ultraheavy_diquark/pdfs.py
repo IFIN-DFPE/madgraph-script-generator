@@ -21,7 +21,7 @@ PDF_NNPDF31_LO_AS_0130 = PartonDistributionFunction(
 )
 
 PDF_NNPDF31_LO_AS_0118 = PartonDistributionFunction(
-    "NNPDF 3.1 global fit, alpha_s(MZ) = 0.118", "0.118", "315000"
+    "NNPDF 3.1 LO global fit, alpha_s(MZ) = 0.118", "0.118", "315000"
 )
 
 PDF_NNPDF40_LO_AS_01180 = PartonDistributionFunction(
@@ -33,9 +33,9 @@ PDF_NNPDF40_NNLO_AS_01180 = PartonDistributionFunction(
 )
 
 PDF_MSHT20_LO_AS_130 = PartonDistributionFunction(
-    "MSHT 2020 LO (68% C.L.), alpha_s = 0.130", "0.130", "27000"
+    "MSHT 2020 LO, alpha_s = 0.130", "0.130", "27000"
 )
 
 PDF_MSHT20_NNLO_AS_118 = PartonDistributionFunction(
-    "MSHT 2020 NNLO (68% C.L.), alpha_s = 0.118", "0.118", "27400"
+    "MSHT 2020 NNLO, alpha_s = 0.118", "0.118", "27400"
 )
