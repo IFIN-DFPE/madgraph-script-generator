@@ -14,7 +14,7 @@ from madgraph_script_generator.commands import (
 
 from ultraheavy_diquark import (
     SignalProcessCommandsGenerator,
-    QCDBackgroundGenerator,
+    QCDMultijetBackgroundGenerator,
     TTBarBackgroundGenerator,
     DibosonBackgroundGenerator,
     SingleBosonBackgroundGenerator,
@@ -187,7 +187,7 @@ def main(
 
     backgrounds_output_path = madgraph_output_directory / "background"
 
-    QCDBackgroundGenerator(
+    QCDMultijetBackgroundGenerator(
         backgrounds_output_path / "qcd",
         suu_mass,
         max_jets=4,

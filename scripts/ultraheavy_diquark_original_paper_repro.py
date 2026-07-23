@@ -16,7 +16,7 @@ from madgraph_script_generator.commands import (
 from ultraheavy_diquark import (
     Pythia8BackgroundProcessGenerator,
     SignalProcessCommandsGenerator,
-    QCDBackgroundGenerator,
+    QCDMultijetBackgroundGenerator,
     TTBarBackgroundGenerator,
     DibosonBackgroundGenerator,
 )
@@ -151,7 +151,7 @@ def main(
         print("Generating MadGraph scripts for backgrounds grouped by process type...")
 
         print("Generating script for QCD multijet background...")
-        QCDBackgroundGenerator(
+        QCDMultijetBackgroundGenerator(
             backgrounds_output_path / "qcd",
             suu_mass,
             max_jets=4,

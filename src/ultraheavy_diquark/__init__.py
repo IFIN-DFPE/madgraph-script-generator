@@ -89,16 +89,21 @@ class CommandsGenerator(ABC):
         return commands
 
     def _phase_space_cuts_commands(self, suu_mass: float) -> list[MadGraphCommand]:
+        minimum_shat = suu_mass - 0.5
+        q_scale = minimum_shat
+
         commands: list[MadGraphCommand] = [
             CommentCommand("=== Phase space cuts ==="),
             CommentCommand(
                 "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
             ),
-            SetCommand("dsqrt_shat", f"{(suu_mass - 0.5) * 1000:.0f}"),
-            CommentCommand("Set the minimum sum of pTs of the jets."),
-            SetCommand("htjmin", f"{suu_mass / 4 * 1000:.0f}"),
-            # CommentCommand("Set the minimum pT of any jet."),
-            # SetCommand("ptj", f"{suu_mass / 16 * 1000:.0f}"),
+            SetCommand("dsqrt_shat", f"{minimum_shat * 1000:.0f}"),
+            CommentCommand("Set the minimum pT of jets."),
+            SetCommand("ptj", f"{(q_scale / 20) * 1000:.0f}"),
+            CommentCommand("Set the maximum pseudorapidity of jets."),
+            SetCommand("etaj", "2.5"),
+            # CommentCommand("Set the minimum sum of pTs of the jets."),
+            # SetCommand("htjmin", f"{suu_mass / 4 * 1000:.0f}"),
         ]
 
         return commands
@@ -144,12 +149,13 @@ class CommandsGenerator(ABC):
             SetCommand("use_syst", "F"),
         ]
 
-        # commands += [
-        #     CommentCommand("Disable jet matching"),
-        #     SetCommand("ickkw", "0"),
-        #     CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
-        #     SetCommand("xqcut", str(xqcut_value_gev)),
-        # ]
+        commands += [
+            CommentCommand("=== Jet matching and merging ==="),
+            CommentCommand("Enable MLM matching scheme"),
+            SetCommand("ickkw", "1"),
+            # CommentCommand(f"ME-PS boundary is at {xqcut_value_gev} GeV"),
+            # SetCommand("xqcut", str(xqcut_value_gev)),
+        ]
 
         commands += self._phase_space_cuts_commands(suu_mass)
 
@@ -354,6 +360,40 @@ class Pythia8BackgroundProcessGenerator(BackgroundProcessCommandsGenerator):
 
 @final
 class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
+    num_jets: int
+
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        num_jets: int,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 100_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+
+        if num_jets > 4:
+            raise Exception(
+                "QCD with more than 4 jets is too expensive computationally"
+            )
+
+        self.num_jets = num_jets
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        jets = " ".join("j" * self.num_jets)
+
+        commands: list[MadGraphCommand] = [
+            CommentCommand("Generate QCD multijet background"),
+            GenerateProcessCommand(f"p p > {jets}"),
+        ]
+
+        return commands
+
+
+@final
+class QCDMultijetBackgroundGenerator(BackgroundProcessCommandsGenerator):
     max_jets: int
 
     def __init__(
