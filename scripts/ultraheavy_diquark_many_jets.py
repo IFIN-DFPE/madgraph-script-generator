@@ -14,7 +14,7 @@ from madgraph_script_generator.commands import (
 
 from ultraheavy_diquark import (
     SignalProcessCommandsGenerator,
-    QCDMultijetBackgroundGenerator,
+    QCDBackgroundGenerator,
     TTBarBackgroundGenerator,
     DibosonBackgroundGenerator,
     SingleBosonBackgroundGenerator,
@@ -177,7 +177,7 @@ def main(
             suu_mass,
             seed=seed,
             delphes_card_path=delphes_card,
-            num_events=50_000 if small_sample else 1_000_000,
+            num_events=50_000 if small_sample else 100_000,
         ).save_to_file(signal_scripts_output_path / f"{full_signal_name}.madgraph.txt")
 
     print("Generating MadGraph command scripts for background processes...")
@@ -187,14 +187,16 @@ def main(
 
     backgrounds_output_path = madgraph_output_directory / "background"
 
-    QCDMultijetBackgroundGenerator(
-        backgrounds_output_path / "qcd",
-        suu_mass,
-        max_jets=4,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=150_000 if small_sample else 1_000_000,
-    ).save_to_file(background_scripts_output_path / "qcd.madgraph.txt")
+    for num_jets in range(2, 6):
+        QCDBackgroundGenerator(
+            backgrounds_output_path / f"qcd_2_to_{num_jets}",
+            suu_mass,
+            num_jets=num_jets,
+            seed=seed,
+            num_events=50_000 if small_sample else 200_000,
+        ).save_to_file(
+            background_scripts_output_path / f"qcd_2_to_{num_jets}.madgraph.txt"
+        )
 
     TTBarBackgroundGenerator(
         backgrounds_output_path / "ttbar",
@@ -208,7 +210,7 @@ def main(
     SingleBosonBackgroundGenerator(
         backgrounds_output_path / "single_boson",
         suu_mass,
-        max_extra_jets=2,
+        max_extra_jets=1,
         seed=seed,
         delphes_card_path=delphes_card,
         num_events=50_000 if small_sample else 150_000,

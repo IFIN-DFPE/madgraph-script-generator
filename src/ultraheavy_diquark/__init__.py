@@ -66,7 +66,7 @@ class CommandsGenerator(ABC):
         commands += [
             CommentCommand("Configure parallelism"),
             SetCommand("run_mode", "2"),
-            SetCommand("nb_core", "100"),
+            SetCommand("nb_core", "128"),
         ]
 
         if not isinstance(self, SignalProcessCommandsGenerator):
@@ -98,12 +98,12 @@ class CommandsGenerator(ABC):
                 "Set the center-of-mass energy for the cuts, to be slightly below the S_{uu} mass to avoid cutting into the signal phase space."
             ),
             SetCommand("dsqrt_shat", f"{minimum_shat * 1000:.0f}"),
-            CommentCommand("Set the minimum pT of jets."),
-            SetCommand("ptj", f"{(q_scale / 20) * 1000:.0f}"),
             CommentCommand("Set the maximum pseudorapidity of jets."),
             SetCommand("etaj", "2.5"),
-            # CommentCommand("Set the minimum sum of pTs of the jets."),
-            # SetCommand("htjmin", f"{suu_mass / 4 * 1000:.0f}"),
+            CommentCommand(
+                "Set the xqCut for the merging process; also sets ptj and mmjj automatically."
+            ),
+            SetCommand("xqcut", f"{(q_scale / 20) * 1000:.0f}"),
         ]
 
         return commands
@@ -112,7 +112,6 @@ class CommandsGenerator(ABC):
         self,
         output_path: Path,
         suu_mass: float,
-        # xqcut_value_gev: float = 30.0,
         seed: int | None = None,
         delphes_card_path: Path | None = None,
     ) -> list[MadGraphCommand]:
@@ -373,9 +372,9 @@ class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
     ) -> None:
         super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
 
-        if num_jets > 4:
+        if num_jets > 5:
             raise Exception(
-                "QCD with more than 4 jets is too expensive computationally"
+                "QCD with more than 5 jets is too expensive computationally"
             )
 
         self.num_jets = num_jets

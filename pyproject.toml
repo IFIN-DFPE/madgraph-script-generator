@@ -13,6 +13,15 @@ dependencies = ["tqdm>=4.67.3", "typer>=0.23.2", "typing-extensions>=4.15.0"]
 [tool.ruff]
 exclude = [".venv", "scripts/diquarkVquark2023_UFO"]
 
+[tool.ruff.lint]
+ignore = [
+    # Don't reorder/organize imports
+    "I001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"{src/ultraheavy_diquark,scripts}/**" = ["TRY002"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/madgraph_script_generator"]
 

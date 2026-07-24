@@ -60,17 +60,25 @@ class QCDBackgroundGenerator(BackgroundProcessCommandsGenerator):
             q_scale = 0.4
 
         if self.sqrt_shat_min is not None:
-            commands.append(
+            commands += (
+                CommentCommand("Set a minimum invariant mass"),
                 SetCommand("dsqrt_shat", f"{self.sqrt_shat_min:.0f}"),
             )
 
         if self.sqrt_shat_max is not None:
-            commands.append(
+            commands += (
+                CommentCommand("Set a maximum invariant mass"),
                 SetCommand("dsqrt_shatmax", f"{self.sqrt_shat_max:.0f}"),
             )
 
-        commands.append(SetCommand("etaj", "2.5"))
-        commands.append(SetCommand("xqcut", f"{q_scale / 20:.0f}"))
+        commands += (
+            CommentCommand("Set a maximum pseudorapidity (eta) for the jets"),
+            SetCommand("etaj", "2.5"),
+            CommentCommand(
+                "Set the xQCut threshold for merging; also sets the ptj and mmjj cuts"
+            ),
+            SetCommand("xqcut", f"{q_scale / 20:.0f}"),
+        )
 
         return commands
 
