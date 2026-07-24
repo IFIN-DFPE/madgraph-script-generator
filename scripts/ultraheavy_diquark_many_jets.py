@@ -49,7 +49,7 @@ class WBZT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
     def process_generation_commands(self) -> list[MadGraphCommand]:
         return [
             GenerateProcessCommand(
-                "p p > suu, (suu > chi chi, (chi > w+ b), (chi > z t))"
+                "p p > suu, (suu > chi chi, (chi > w+ b, w+ > j j), (chi > h t, (h > b b~), (t > w+ b, w+ > j j)))"
             )
         ]
 
