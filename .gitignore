@@ -12,6 +12,10 @@ wheels/
 # Default name for nohup output file
 nohup.out
 
+# SLURM output/error files
+*.out
+*.err
+
 # Log files
 *.log
 
