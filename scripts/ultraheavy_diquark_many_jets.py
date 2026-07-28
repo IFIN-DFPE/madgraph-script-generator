@@ -168,7 +168,7 @@ def main(
     }
 
     for signal_name, generator in signals.items():
-        full_signal_name = f"{signal_name}_{suu_mass:.1g}TeV"
+        full_signal_name = f"{signal_name}"
         output_path = madgraph_output_directory / "signal" / full_signal_name
 
         generator(
@@ -177,7 +177,7 @@ def main(
             suu_mass,
             seed=seed,
             delphes_card_path=delphes_card,
-            num_events=50_000 if small_sample else 100_000,
+            num_events=50_000 if small_sample else 200_000,
         ).save_to_file(signal_scripts_output_path / f"{full_signal_name}.madgraph.txt")
 
     print("Generating MadGraph command scripts for background processes...")
@@ -187,13 +187,20 @@ def main(
 
     backgrounds_output_path = madgraph_output_directory / "background"
 
-    for num_jets in range(2, 6):
+    qcd_counts: dict[int, int] = {
+        2: 100_000,
+        3: 200_000,
+        4: 500_000,
+        5: 500_000,
+    }
+
+    for num_jets in range(2, 5):
         QCDBackgroundGenerator(
             backgrounds_output_path / f"qcd_2_to_{num_jets}",
             suu_mass,
             num_jets=num_jets,
             seed=seed,
-            num_events=50_000 if small_sample else 200_000,
+            num_events=50_000 if small_sample else qcd_counts[num_jets],
         ).save_to_file(
             background_scripts_output_path / f"qcd_2_to_{num_jets}.madgraph.txt"
         )
@@ -204,7 +211,7 @@ def main(
         max_extra_jets=2,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 600_000,
+        num_events=50_000 if small_sample else 200_000,
     ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
 
     SingleBosonBackgroundGenerator(
@@ -213,7 +220,7 @@ def main(
         max_extra_jets=1,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 150_000,
+        num_events=50_000 if small_sample else 100_000,
     ).save_to_file(background_scripts_output_path / "single_boson.madgraph.txt")
 
     DibosonBackgroundGenerator(
@@ -222,7 +229,7 @@ def main(
         max_extra_jets=1,
         seed=seed,
         delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 300_000,
+        num_events=50_000 if small_sample else 100_000,
     ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
 
 

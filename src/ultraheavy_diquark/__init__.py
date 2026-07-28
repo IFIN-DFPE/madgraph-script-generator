@@ -104,6 +104,8 @@ class CommandsGenerator(ABC):
                 "Set the xqCut for the merging process; also sets ptj and mmjj automatically."
             ),
             SetCommand("xqcut", f"{(q_scale / 20) * 1000:.0f}"),
+            # CommentCommand("Set the minimum sum of pT of leading two jets."),
+            # SetCommand("ht2min", f"{(suu_mass / 4) * 1000:.0f}"),
         ]
 
         return commands
