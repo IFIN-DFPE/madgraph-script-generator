@@ -11,8 +11,6 @@ import typer
 
 from madgraph_script_generator.runner import run_madgraph
 
-# srun -N 1 --cpus-per-task 256  --time 06:00:00  --job-name MadGraph_Suu_chichi_wb_ht_jjb_bbt_8TeV mg5_aMC ./Suu_chichi_wbht_jjb_bbt_8TeV.madgraph.txt &> ./Suu_chichi_wbht_jjb_bbt_8TeV.madgraph.log
-
 
 def launch_slurm_jobs(script_file_paths: Iterable[Path], skip_existing: bool) -> None:
     for script_file_path in script_file_paths:
