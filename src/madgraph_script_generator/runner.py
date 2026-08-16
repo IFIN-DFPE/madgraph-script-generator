@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
 import subprocess
-from typing import Callable
 
 
 def run_madgraph(

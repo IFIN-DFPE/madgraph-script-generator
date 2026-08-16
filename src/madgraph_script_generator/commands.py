@@ -2,8 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from pathlib import Path
 from textwrap import TextWrapper
-from typing import TextIO, final
-from typing_extensions import override
+from typing import TextIO, final, override
 
 
 class MadGraphCommand(ABC):
@@ -15,6 +14,10 @@ class MadGraphCommand(ABC):
 
 
 _comments_wrapper = TextWrapper(initial_indent="# ", subsequent_indent="# ")
+
+
+class MadGraphScriptGeneratorException(Exception):
+    """Base class for exceptions raised by the MadGraph script generator."""
 
 
 @final
@@ -189,7 +192,7 @@ class LaunchCommand(MadGraphCommand):
         launch_command = "launch"
 
         if self.directory:
-            launch_command += f" {str(self.directory)}"
+            launch_command += f" {self.directory!s}"
 
         if self.run_name:
             launch_command += f" -n {self.run_name}"
@@ -293,7 +296,7 @@ def write_commands_to_stream(
     written_count = stream.write(commands_str)
 
     if len(commands_str) != written_count:
-        raise Exception(
+        raise MadGraphScriptGeneratorException(
             "Couldn't fully write generated MadGraph script to the given IO stream"
         )
 

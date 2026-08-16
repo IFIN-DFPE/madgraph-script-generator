@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 import signal
 import subprocess
+from sys import exit
 from textwrap import dedent
 from types import FrameType
 
@@ -40,7 +41,7 @@ def launch_slurm_jobs(script_file_paths: Iterable[Path], skip_existing: bool) ->
 
         try:
             _ = subprocess.run("sbatch", input=slurm_script.encode("utf-8"), check=True)
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             print(
                 f"An error occurred while launching Slurm job for MadGraph script {script_file_path}: {err}"
             )
@@ -55,7 +56,7 @@ def run_scripts(script_file_paths: Iterable[Path], skip_existing: bool) -> None:
             for process in running_processes:
                 try:
                     process.kill()
-                except Exception as err:
+                except Exception as err:  # noqa: BLE001
                     print(f"An error occurred while killing a MadGraph process: {err}")
                     continue
 
@@ -85,7 +86,7 @@ def run_scripts(script_file_paths: Iterable[Path], skip_existing: bool) -> None:
                 lambda process: running_processes.add(process),
             )
 
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             print(
                 f"An error occurred while running MadGraph script {script_file_path}: {err}"
             )
