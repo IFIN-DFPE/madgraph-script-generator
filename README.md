@@ -10,10 +10,12 @@ The **MadGraph script generator** (this project) introduces a [Python](https://w
 
 ## Usage
 
-The toolkit is designed to be imported and used in short Python scripts, which then generate the required MadGraph scripts. See the file `scripts/ultraheavy_diquark_original_paper_repro.py` for an example.
+The toolkit is designed to be imported and used in short Python scripts, which then generate the required MadGraph scripts. See the [`diquark-simulations`](https://github.com/IFIN-DFPE/diquark-simulations) repo for examples.
 
 After the script files have been generated and saved to disk, we also offer an utility script, `scripts/run_scripts.py`, which can help run the scripts sequentially on the local computer. It's best to run it through [`nohup`](https://en.wikipedia.org/wiki/Nohup):
 
 ```shell
 nohup python3 scripts/run_scripts.py path/to/generated/scripts/directory &
 ```
+
+It can also submit the scripts as [SLURM](https://slurm.schedmd.com/overview.html) jobs.
