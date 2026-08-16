@@ -2,7 +2,7 @@
 to reproduce the main results of the paper https://arxiv.org/abs/2503.17031.
 """
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, final, override
 
@@ -33,7 +33,7 @@ class WBWB_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
         ]
 
 
-class BackgroundGenerationStrategy(str, Enum):
+class BackgroundGenerationStrategy(StrEnum):
     GROUP_BY_PROCESS = "group_by_process"
     INDIVIDUAL_PROCESSES = "individual_processes"
 
@@ -98,7 +98,7 @@ def main(
             "--with-background/--no-background",
             help="Whether to also generate scripts for the background processes.",
         ),
-    ] = False,
+    ] = True,
     background_generation_strategy: Annotated[
         BackgroundGenerationStrategy,
         typer.Option(help="Strategy for generating background processes"),

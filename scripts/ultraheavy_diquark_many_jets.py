@@ -1,18 +1,22 @@
 """Alternative fully-hadronic production routes for the ultraheavy diquark scalar
-(with many jets in the final states).
+(with many jets in the final states), for the S_{uu} -> \\chi-\\chi channel.
 """
 
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, final, override
 
 import typer
 
 from madgraph_script_generator.commands import (
+    AddProcessCommand,
+    CommentCommand,
     GenerateProcessCommand,
     MadGraphCommand,
 )
 
 from ultraheavy_diquark import (
+    BackgroundProcessCommandsGenerator,
     SignalProcessCommandsGenerator,
     QCDBackgroundGenerator,
     TTBarBackgroundGenerator,
@@ -109,6 +113,70 @@ class ZTHT_JJTBBT_ProcessCommandsGenerator(SignalProcessCommandsGenerator):
         ]
 
 
+@final
+class CombinedBackgroundProcessesCommandsGenerator(BackgroundProcessCommandsGenerator):
+    def __init__(
+        self,
+        output_path: Path,
+        suu_mass: float,
+        seed: int | None = None,
+        delphes_card_path: Path | None = None,
+        num_events: int = 2_000_000,
+    ) -> None:
+        super().__init__(output_path, suu_mass, seed, delphes_card_path, num_events)
+
+    @override
+    def process_generation_commands(self) -> list[MadGraphCommand]:
+        # Start with QCD
+        commands: list[MadGraphCommand] = [
+            CommentCommand("Generate QCD 2->2"),
+            GenerateProcessCommand("p p > j j"),
+        ]
+
+        for num_jets in range(3, 5):
+            jets = " ".join("j" * num_jets)
+
+            commands += [
+                CommentCommand(f"Generate QCD 2->{num_jets}"),
+                AddProcessCommand(f"p p > {jets}"),
+            ]
+
+        # Generate ttbar + jets
+        for extra_jets in range(0, 3):
+            jets = " ".join("j" * extra_jets)
+            commands += [
+                CommentCommand(f"Generate ttbar + {extra_jets} jets"),
+                AddProcessCommand(f"p p > t t~{'' if extra_jets == 0 else ' ' + jets}"),
+            ]
+
+        # Generate single boson + jets
+        for extra_jets in range(0, 2):
+            jets = " ".join("j" * extra_jets)
+            commands += [
+                CommentCommand("Generate v + jets background"),
+                GenerateProcessCommand(
+                    f"p p > v{'' if extra_jets == 0 else ' ' + jets}, v > j j"
+                ),
+            ]
+
+        # Generate diboson + jets
+        for extra_jets in range(0, 2):
+            jets = " ".join("j" * extra_jets)
+            commands += [
+                CommentCommand("Generate diboson + jets background"),
+                GenerateProcessCommand(
+                    f"p p > v v{'' if extra_jets == 0 else ' ' + jets}, v > j j"
+                ),
+            ]
+
+        return commands
+
+
+class BackgroundGenerationStrategy(StrEnum):
+    GROUP_BY_PROCESS_TYPE = "group_by_process_type"
+    ALL_TOGETHER = "all_together"
+
+
 def main(
     diquark_model_path: Path = Path(
         # pyright: ignore[reportCallInDefaultInitializer]
@@ -130,6 +198,13 @@ def main(
             help="Whether to generate a small sample for testing",
         ),
     ] = False,
+    include_signals_with_small_cross_sections: Annotated[
+        bool,
+        typer.Option(
+            "--include-signals-with-small-cross-sections",
+            help="Whether to include signals with small cross sections in the generation",
+        ),
+    ] = False,
     enable_pileup: Annotated[
         bool,
         typer.Option(
@@ -137,6 +212,10 @@ def main(
             help="Whether to include pileup interactions in the generated samples",
         ),
     ] = False,
+    background_generation_strategy: Annotated[
+        BackgroundGenerationStrategy,
+        typer.Option(help="Strategy for generating background processes"),
+    ] = BackgroundGenerationStrategy.ALL_TOGETHER,
     seed: Annotated[int, typer.Option(help="Random seed for reproducibility")] = 42,
 ) -> None:
     output_directory = output_directory.resolve()
@@ -167,9 +246,31 @@ def main(
         "Suu_chichi_ztht_jjt_bbt": ZTHT_JJTBBT_ProcessCommandsGenerator,
     }
 
+    signals_with_small_cross_sections = {
+        "Suu_chichi_htht_wwt_wwt",
+        "Suu_chichi_wbht_jjb_wwtt",
+        "Suu_chichi_ztht_jjt_wwt",
+    }
+
+    if (
+        background_generation_strategy
+        == BackgroundGenerationStrategy.GROUP_BY_PROCESS_TYPE
+    ):
+        num_events_per_signal = 50_000 if small_sample else 200_000
+    elif background_generation_strategy == BackgroundGenerationStrategy.ALL_TOGETHER:
+        num_events_per_signal = 200_000 if small_sample else 1_000_000
+
     for signal_name, generator in signals.items():
-        full_signal_name = f"{signal_name}"
-        output_path = madgraph_output_directory / "signal" / full_signal_name
+        if (
+            signal_name in signals_with_small_cross_sections
+            and not include_signals_with_small_cross_sections
+        ):
+            print(
+                f"Skipping signal {signal_name} due to small cross section (use --include-signals-with-small-cross-sections to include it)"
+            )
+            continue
+
+        output_path = madgraph_output_directory / "signal" / signal_name
 
         generator(
             diquark_model_path,
@@ -177,8 +278,8 @@ def main(
             suu_mass,
             seed=seed,
             delphes_card_path=delphes_card,
-            num_events=50_000 if small_sample else 200_000,
-        ).save_to_file(signal_scripts_output_path / f"{full_signal_name}.madgraph.txt")
+            num_events=num_events_per_signal,
+        ).save_to_file(signal_scripts_output_path / f"{signal_name}.madgraph.txt")
 
     print("Generating MadGraph command scripts for background processes...")
 
@@ -187,50 +288,64 @@ def main(
 
     backgrounds_output_path = madgraph_output_directory / "background"
 
-    qcd_counts: dict[int, int] = {
-        2: 100_000,
-        3: 200_000,
-        4: 500_000,
-        5: 500_000,
-    }
+    if (
+        background_generation_strategy
+        == BackgroundGenerationStrategy.GROUP_BY_PROCESS_TYPE
+    ):
+        qcd_counts: dict[int, int] = {
+            2: 100_000,
+            3: 200_000,
+            4: 500_000,
+            # 5: 500_000,
+        }
+        max_jets = max(qcd_counts.keys())
 
-    for num_jets in range(2, 5):
-        QCDBackgroundGenerator(
-            backgrounds_output_path / f"qcd_2_to_{num_jets}",
+        for num_jets in range(2, max_jets):
+            QCDBackgroundGenerator(
+                backgrounds_output_path / f"qcd_2_to_{num_jets}",
+                suu_mass,
+                num_jets=num_jets,
+                seed=seed,
+                num_events=50_000 if small_sample else qcd_counts[num_jets],
+            ).save_to_file(
+                background_scripts_output_path / f"qcd_2_to_{num_jets}.madgraph.txt"
+            )
+
+        TTBarBackgroundGenerator(
+            backgrounds_output_path / "ttbar",
             suu_mass,
-            num_jets=num_jets,
+            max_extra_jets=2,
             seed=seed,
-            num_events=50_000 if small_sample else qcd_counts[num_jets],
-        ).save_to_file(
-            background_scripts_output_path / f"qcd_2_to_{num_jets}.madgraph.txt"
-        )
+            delphes_card_path=delphes_card,
+            num_events=50_000 if small_sample else 200_000,
+        ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
 
-    TTBarBackgroundGenerator(
-        backgrounds_output_path / "ttbar",
-        suu_mass,
-        max_extra_jets=2,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 200_000,
-    ).save_to_file(background_scripts_output_path / "ttbar.madgraph.txt")
+        SingleBosonBackgroundGenerator(
+            backgrounds_output_path / "single_boson",
+            suu_mass,
+            max_extra_jets=1,
+            seed=seed,
+            delphes_card_path=delphes_card,
+            num_events=50_000 if small_sample else 100_000,
+        ).save_to_file(background_scripts_output_path / "single_boson.madgraph.txt")
 
-    SingleBosonBackgroundGenerator(
-        backgrounds_output_path / "single_boson",
-        suu_mass,
-        max_extra_jets=1,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
-    ).save_to_file(background_scripts_output_path / "single_boson.madgraph.txt")
+        DibosonBackgroundGenerator(
+            backgrounds_output_path / "diboson",
+            suu_mass,
+            max_extra_jets=1,
+            seed=seed,
+            delphes_card_path=delphes_card,
+            num_events=50_000 if small_sample else 100_000,
+        ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
 
-    DibosonBackgroundGenerator(
-        backgrounds_output_path / "diboson",
-        suu_mass,
-        max_extra_jets=1,
-        seed=seed,
-        delphes_card_path=delphes_card,
-        num_events=50_000 if small_sample else 100_000,
-    ).save_to_file(background_scripts_output_path / "diboson.madgraph.txt")
+    elif background_generation_strategy == BackgroundGenerationStrategy.ALL_TOGETHER:
+        CombinedBackgroundProcessesCommandsGenerator(
+            backgrounds_output_path / "combined",
+            suu_mass,
+            seed=seed,
+            delphes_card_path=delphes_card,
+            num_events=200_000 if small_sample else 2_000_000,
+        ).save_to_file(background_scripts_output_path / "combined.madgraph.txt")
 
 
 if __name__ == "__main__":
