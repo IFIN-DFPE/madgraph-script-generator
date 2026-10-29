@@ -54,7 +54,7 @@ class SetCommand(MadGraphCommand):
 
     @override
     def to_command_str(self) -> str:
-        return f"set {self.card + ' ' if self.card else ''}{self.variable} = {self.value}".strip()
+        return f"set {self.card + ' ' if self.card else ''}{self.variable} {self.value}".strip()
 
 
 @final
